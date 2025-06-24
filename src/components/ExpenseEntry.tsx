@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,14 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PlusCircle, Receipt, DollarSign } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PlusCircle, Receipt, DollarSign, CalendarIcon, Upload } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Participant, Expense } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
 interface ExpenseEntryProps {
   participants: Participant[];
   expenses: Expense[];
-  onAddExpense: (expense: Expense) => void;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'tripId' | 'createdAt' | 'updatedAt'>) => void;
 }
 
 const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProps) => {
@@ -23,6 +26,7 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
   const [paidBy, setPaidBy] = useState('');
   const [splitBetween, setSplitBetween] = useState<string[]>([]);
   const [category, setCategory] = useState('');
+  const [expenseDate, setExpenseDate] = useState<Date>(new Date());
 
   const categories = [
     'Food & Dining',
@@ -43,14 +47,13 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
       return;
     }
 
-    const expense: Expense = {
-      id: Date.now().toString(),
+    const expense = {
       description: description.trim(),
       amount: parseFloat(amount),
       paidBy,
       splitBetween,
       category: category || 'Other',
-      date: new Date().toISOString(),
+      date: expenseDate.toISOString(),
     };
 
     onAddExpense(expense);
@@ -61,6 +64,7 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
     setPaidBy('');
     setSplitBetween([]);
     setCategory('');
+    setExpenseDate(new Date());
 
     toast({
       title: "Expense added",
@@ -139,7 +143,7 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Paid by *</Label>
               <Select value={paidBy} onValueChange={setPaidBy}>
@@ -170,8 +174,47 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-white",
+                      !expenseDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {expenseDate ? format(expenseDate, "PPP") : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={expenseDate}
+                    onSelect={(date) => date && setExpenseDate(date)}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
+          {/* Receipt Upload Section */}
+          <div className="space-y-2">
+            <Label>Receipt (Optional)</Label>
+            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center bg-white">
+              <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-600">Drop receipt image here or click to upload</p>
+              <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 10MB</p>
+              <Button variant="outline" size="sm" className="mt-2">
+                Choose File
+              </Button>
+            </div>
+          </div>
+
+          {/* Split Between Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Split between *</Label>
