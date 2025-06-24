@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +46,8 @@ export const useTrips = () => {
       const { data, error } = await supabase
         .from('trips')
         .insert([{
-          ...tripData,
+          name: tripData.name,
+          description: tripData.description,
           start_date: tripData.startDate,
           end_date: tripData.endDate,
           settlement_deadline: tripData.settlementDeadline,
@@ -125,7 +127,7 @@ export const useTripData = (tripId: string | null) => {
       return data
         .filter(tp => tp.participants !== null)
         .map(tp => ({
-          ...(tp.participants as any),
+          ...((tp.participants as any) || {}),
           role: tp.role,
         }));
     },
