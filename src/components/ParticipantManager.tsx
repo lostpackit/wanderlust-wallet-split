@@ -9,8 +9,8 @@ import { Participant } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
 interface ParticipantManagerProps {
-  participants: Participant[];
-  onAddParticipant: (participant: Participant) => void;
+  participants: (Participant & { role?: string })[];
+  onAddParticipant: (participant: { name: string; email: string }) => void;
   onRemoveParticipant: (id: string) => void;
 }
 
@@ -28,20 +28,22 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
       return;
     }
 
-    const participant: Participant = {
-      id: Date.now().toString(),
+    if (!newEmail.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter an email for the participant",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    onAddParticipant({
       name: newName.trim(),
       email: newEmail.trim(),
-    };
-
-    onAddParticipant(participant);
+    });
+    
     setNewName('');
     setNewEmail('');
-    
-    toast({
-      title: "Participant added",
-      description: `${participant.name} has been added to the trip`,
-    });
   };
 
   const getInitials = (name: string) => {
@@ -60,7 +62,7 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
         />
         <div className="flex gap-2">
           <Input
-            placeholder="Email (optional)"
+            placeholder="Email"
             type="email"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
@@ -101,6 +103,11 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
                       <p className="font-semibold text-slate-800">{participant.name}</p>
                       {participant.email && (
                         <p className="text-sm text-slate-500">{participant.email}</p>
+                      )}
+                      {participant.role && (
+                        <span className="inline-block text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1">
+                          {participant.role}
+                        </span>
                       )}
                     </div>
                   </div>

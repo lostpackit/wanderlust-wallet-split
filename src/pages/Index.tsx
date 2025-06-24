@@ -10,9 +10,11 @@ import TripHeader from "@/components/TripHeader";
 import UserDashboard from "@/components/UserDashboard";
 import CreateTripModal from "@/components/CreateTripModal";
 import TripSelector from "@/components/TripSelector";
+import AddParticipantModal from "@/components/AddParticipantModal";
 import AuthPage from "@/components/AuthPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips, useTripData } from "@/hooks/useTrips";
+import { useParticipants } from "@/hooks/useParticipants";
 import { Trip } from "@/types/trip";
 import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
 import { Loader2 } from "lucide-react";
@@ -24,6 +26,16 @@ const Index = () => {
   
   const { trips, tripsLoading, createTrip, isCreatingTrip } = useTrips();
   const { participants, expenses, participantsLoading, expensesLoading } = useTripData(selectedTrip?.id || null);
+  
+  // Use the actual participants hook for the selected trip
+  const {
+    participants: realParticipants,
+    participantsLoading: realParticipantsLoading,
+    addParticipant,
+    removeParticipant,
+    isAddingParticipant,
+    isRemovingParticipant,
+  } = useParticipants(selectedTrip?.id || null);
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -123,7 +135,7 @@ const Index = () => {
             <TripHeader 
               tripName={selectedTrip.name} 
               onTripNameChange={() => {}} // Will be implemented later
-              participantCount={participants.length}
+              participantCount={realParticipants.length}
               totalExpenses={totalExpenses}
             />
             
@@ -155,16 +167,23 @@ const Index = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {participantsLoading ? (
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-semibold">Participants ({realParticipants.length})</h3>
+                      <AddParticipantModal 
+                        onAddParticipant={addParticipant}
+                        isLoading={isAddingParticipant}
+                      />
+                    </div>
+                    {realParticipantsLoading ? (
                       <div className="flex items-center justify-center py-4">
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Loading participants...
                       </div>
                     ) : (
                       <ParticipantManager 
-                        participants={participants}
-                        onAddParticipant={() => {}} // Will be implemented
-                        onRemoveParticipant={() => {}} // Will be implemented
+                        participants={realParticipants}
+                        onAddParticipant={(participant) => addParticipant({ name: participant.name, email: participant.email })}
+                        onRemoveParticipant={removeParticipant}
                       />
                     )}
                   </CardContent>
@@ -190,7 +209,7 @@ const Index = () => {
                       </div>
                     ) : (
                       <ExpenseEntry 
-                        participants={participants}
+                        participants={realParticipants}
                         expenses={expenses}
                         onAddExpense={() => {}} // Will be implemented
                       />
@@ -212,7 +231,7 @@ const Index = () => {
                     </CardHeader>
                   <CardContent>
                     <BalanceView 
-                      participants={participants}
+                      participants={realParticipants}
                       expenses={expenses}
                     />
                   </CardContent>
