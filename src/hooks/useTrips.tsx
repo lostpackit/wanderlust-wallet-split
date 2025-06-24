@@ -24,7 +24,19 @@ export const useTrips = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      
+      // Transform the data to match our Trip interface
+      return data.map((trip): Trip => ({
+        id: trip.id,
+        name: trip.name,
+        description: trip.description,
+        startDate: trip.start_date,
+        endDate: trip.end_date,
+        settlementDeadline: trip.settlement_deadline,
+        createdBy: trip.created_by,
+        createdAt: trip.created_at,
+        updatedAt: trip.updated_at,
+      }));
     },
     enabled: !!user,
   });
@@ -44,7 +56,19 @@ export const useTrips = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Transform the returned data to match our Trip interface
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        settlementDeadline: data.settlement_deadline,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trips'] });
@@ -121,7 +145,21 @@ export const useTripData = (tripId: string | null) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      
+      // Transform the data to match our Expense interface
+      return data.map((expense): Expense => ({
+        id: expense.id,
+        tripId: expense.trip_id,
+        description: expense.description,
+        amount: expense.amount,
+        paidBy: expense.paid_by,
+        splitBetween: expense.split_between,
+        category: expense.category,
+        date: expense.date,
+        receipt: expense.receipt,
+        createdAt: expense.created_at,
+        updatedAt: expense.updated_at,
+      }));
     },
     enabled: !!tripId && !!user,
   });
