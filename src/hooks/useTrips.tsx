@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,6 +94,7 @@ export const useTrips = () => {
   };
 };
 
+// Keep the existing useTripData hook for compatibility
 export const useTripData = (tripId: string | null) => {
   const { user } = useAuth();
 

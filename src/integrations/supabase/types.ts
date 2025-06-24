@@ -64,6 +64,20 @@ export type Database = {
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_expenses_paid_by"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_expenses_trip"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
         ]
       }
       participants: {
@@ -143,6 +157,20 @@ export type Database = {
           trip_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_trip_participants_participant"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_trip_participants_trip"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trip_participants_participant_id_fkey"
             columns: ["participant_id"]
