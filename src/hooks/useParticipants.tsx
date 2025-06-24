@@ -36,10 +36,12 @@ export const useParticipants = (tripId: string | null) => {
         .eq('trip_id', tripId);
 
       if (error) throw error;
-      return data.map(tp => ({
-        ...tp.participants,
-        role: tp.role,
-      })) as (Participant & { role: string })[];
+      return data
+        .filter(tp => tp.participants !== null)
+        .map(tp => ({
+          ...(tp.participants as any),
+          role: tp.role,
+        })) as (Participant & { role: string })[];
     },
     enabled: !!tripId && !!user,
   });

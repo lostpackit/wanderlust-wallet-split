@@ -122,10 +122,12 @@ export const useTripData = (tripId: string | null) => {
         .eq('trip_id', tripId);
 
       if (error) throw error;
-      return data.map(tp => ({
-        ...tp.participants,
-        role: tp.role,
-      }));
+      return data
+        .filter(tp => tp.participants !== null)
+        .map(tp => ({
+          ...(tp.participants as any),
+          role: tp.role,
+        }));
     },
     enabled: !!tripId && !!user,
   });
