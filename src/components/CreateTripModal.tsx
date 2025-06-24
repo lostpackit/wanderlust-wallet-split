@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,7 @@ import { Trip } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
 interface CreateTripModalProps {
-  onCreateTrip: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onCreateTrip: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => void;
 }
 
 const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
@@ -50,7 +49,6 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       settlementDeadline: settlementDeadline.toISOString(),
-      createdBy: 'current-user-id', // This will be replaced with actual user ID from Supabase
     };
 
     onCreateTrip(newTrip);
@@ -62,11 +60,6 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
     setEndDate(undefined);
     setSettlementDeadline(undefined);
     setOpen(false);
-
-    toast({
-      title: "Trip created",
-      description: `${newTrip.name} has been created successfully`,
-    });
   };
 
   return (
