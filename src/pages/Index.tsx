@@ -10,75 +10,42 @@ import TripHeader from "@/components/TripHeader";
 import UserDashboard from "@/components/UserDashboard";
 import CreateTripModal from "@/components/CreateTripModal";
 import TripSelector from "@/components/TripSelector";
-import { Participant, Expense, Trip, UserDashboardData } from "@/types/trip";
-import { PlusCircle, Users, Receipt, Calculator, Home } from "lucide-react";
+import AuthPage from "@/components/AuthPage";
+import { useAuth } from "@/hooks/useAuth";
+import { useTrips, useTripData } from "@/hooks/useTrips";
+import { Trip } from "@/types/trip";
+import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
+  const { user, loading: authLoading, signOut } = useAuth();
   const [view, setView] = useState<'dashboard' | 'trip'>('dashboard');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   
-  // Mock data - this will be replaced with Supabase data
-  const [trips, setTrips] = useState<Trip[]>([
-    {
-      id: '1',
-      name: 'Barcelona Adventure 2024',
-      description: 'Amazing trip to Barcelona with friends',
-      startDate: '2024-07-01T00:00:00Z',
-      endDate: '2024-07-07T00:00:00Z',
-      settlementDeadline: '2024-07-15T00:00:00Z',
-      createdBy: 'user1',
-      createdAt: '2024-06-01T00:00:00Z',
-      updatedAt: '2024-06-01T00:00:00Z',
-    }
-  ]);
+  const { trips, tripsLoading, createTrip, isCreatingTrip } = useTrips();
+  const { participants, expenses, participantsLoading, expensesLoading } = useTripData(selectedTrip?.id || null);
 
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
-  // Mock dashboard data
-  const dashboardData: UserDashboardData = {
-    totalOwed: 250.50,
-    totalOwing: 180.25,
-    activeTrips: trips,
-    recentExpenses: expenses.slice(-5),
-  };
-
-  const addTrip = (tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTrip: Trip = {
-      ...tripData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setTrips([...trips, newTrip]);
-  };
-
-  const addParticipant = (participant: Participant) => {
-    setParticipants([...participants, participant]);
-  };
-
-  const removeParticipant = (id: string) => {
-    setParticipants(participants.filter(p => p.id !== id));
-  };
-
-  const addExpense = (expenseData: Omit<Expense, 'id' | 'tripId' | 'createdAt' | 'updatedAt'>) => {
-    if (!selectedTrip) return;
-    
-    const expense: Expense = {
-      ...expenseData,
-      id: Date.now().toString(),
-      tripId: selectedTrip.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setExpenses([...expenses, expense]);
-  };
+  // Show auth page if user is not logged in
+  if (!user) {
+    return <AuthPage />;
+  }
 
   const handleSelectTrip = (trip: Trip | null) => {
     setSelectedTrip(trip);
     if (trip) {
       setView('trip');
-      // In real implementation, load trip-specific data here
     }
   };
 
@@ -87,26 +54,49 @@ const Index = () => {
     setSelectedTrip(null);
   };
 
-  const totalExpenses = expenses
-    .filter(e => selectedTrip ? e.tripId === selectedTrip.id : true)
-    .reduce((sum, expense) => sum + expense.amount, 0);
+  const handleCreateTrip = (tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+    createTrip(tripData);
+  };
+
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  // Mock dashboard data - will be replaced with real data
+  const dashboardData = {
+    totalOwed: 0,
+    totalOwing: 0,
+    activeTrips: trips,
+    recentExpenses: expenses.slice(-5),
+  };
 
   if (view === 'dashboard') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="text-center space-y-6 mb-8">
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-slate-800">Trip Expense Manager</h1>
-              <p className="text-slate-600 text-lg">Manage all your travel expenses in one place</p>
+          <div className="flex justify-between items-center mb-8">
+            <div className="text-center space-y-6">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold text-slate-800">Trip Expense Manager</h1>
+                <p className="text-slate-600 text-lg">Welcome back, {user.email}!</p>
+              </div>
+              <CreateTripModal onCreateTrip={handleCreateTrip} />
             </div>
-            <CreateTripModal onCreateTrip={addTrip} />
+            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
           </div>
           
-          <UserDashboard 
-            dashboardData={dashboardData}
-            onSelectTrip={handleSelectTrip}
-          />
+          {tripsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Loading trips...
+            </div>
+          ) : (
+            <UserDashboard 
+              dashboardData={dashboardData}
+              onSelectTrip={handleSelectTrip}
+            />
+          )}
         </div>
       </div>
     );
@@ -115,18 +105,24 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <TripSelector
-          trips={trips}
-          selectedTrip={selectedTrip}
-          onSelectTrip={handleSelectTrip}
-          onBackToDashboard={handleBackToDashboard}
-        />
+        <div className="flex justify-between items-center mb-6">
+          <TripSelector
+            trips={trips}
+            selectedTrip={selectedTrip}
+            onSelectTrip={handleSelectTrip}
+            onBackToDashboard={handleBackToDashboard}
+          />
+          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
+        </div>
 
         {selectedTrip && (
           <>
             <TripHeader 
               tripName={selectedTrip.name} 
-              onTripNameChange={() => {}} // Will be implemented with Supabase
+              onTripNameChange={() => {}} // Will be implemented later
               participantCount={participants.length}
               totalExpenses={totalExpenses}
             />
@@ -159,11 +155,18 @@ const Index = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ParticipantManager 
-                      participants={participants}
-                      onAddParticipant={addParticipant}
-                      onRemoveParticipant={removeParticipant}
-                    />
+                    {participantsLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Loading participants...
+                      </div>
+                    ) : (
+                      <ParticipantManager 
+                        participants={participants}
+                        onAddParticipant={() => {}} // Will be implemented
+                        onRemoveParticipant={() => {}} // Will be implemented
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -180,11 +183,18 @@ const Index = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ExpenseEntry 
-                      participants={participants}
-                      expenses={expenses.filter(e => e.tripId === selectedTrip.id)}
-                      onAddExpense={addExpense}
-                    />
+                    {expensesLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Loading expenses...
+                      </div>
+                    ) : (
+                      <ExpenseEntry 
+                        participants={participants}
+                        expenses={expenses}
+                        onAddExpense={() => {}} // Will be implemented
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -199,11 +209,11 @@ const Index = () => {
                     <CardDescription>
                       See the breakdown of who owes money to whom
                     </CardDescription>
-                  </CardHeader>
+                    </CardHeader>
                   <CardContent>
                     <BalanceView 
                       participants={participants}
-                      expenses={expenses.filter(e => e.tripId === selectedTrip.id)}
+                      expenses={expenses}
                     />
                   </CardContent>
                 </Card>

@@ -9,7 +9,192 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string
+          id: string
+          paid_by: string
+          receipt: string | null
+          split_between: string[]
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          paid_by: string
+          receipt?: string | null
+          split_between: string[]
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          paid_by?: string
+          receipt?: string | null
+          split_between?: string[]
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participants: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trip_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          participant_id: string
+          role: string
+          trip_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          participant_id: string
+          role?: string
+          trip_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          participant_id?: string
+          role?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_participants_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_participants_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          id: string
+          name: string
+          settlement_deadline: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          id?: string
+          name: string
+          settlement_deadline: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          name?: string
+          settlement_deadline?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
