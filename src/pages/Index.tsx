@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { Trip } from "@/types/trip";
 import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -28,6 +28,9 @@ const Index = () => {
   
   const { trips, tripsLoading, createTrip, isCreatingTrip } = useTrips();
   const { participants, expenses, participantsLoading, expensesLoading } = useTripData(selectedTrip?.id || null);
+  
+  // Use the dashboard data hook for calculating totals across all trips
+  const { dashboardData, dashboardLoading } = useDashboardData();
   
   // Use the actual participants hook for the selected trip
   const {
@@ -48,23 +51,6 @@ const Index = () => {
     isAddingExpense,
     isDeletingExpense,
   } = useExpenses(selectedTrip?.id || null);
-
-  // Calculate dashboard totals across all trips - this needs to be fixed
-  const calculateDashboardTotals = () => {
-    let totalOwed = 0;
-    let totalOwing = 0;
-    
-    // For dashboard view, we need to calculate across all trips
-    // Since we don't have all trips' data loaded, let's show basic info for now
-    // In a full implementation, this would need to load data for all user's trips
-    
-    // For now, let's just return some mock data to show the dashboard works
-    // This should be replaced with actual aggregation across all trips
-    console.log('Calculating dashboard totals - user:', user);
-    console.log('Available trips:', trips);
-    
-    return { totalOwed: 0, totalOwing: 0 };
-  };
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -110,15 +96,6 @@ const Index = () => {
 
   const totalExpenses = realExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-  // Calculate actual dashboard data
-  const { totalOwed, totalOwing } = calculateDashboardTotals();
-  const dashboardData = {
-    totalOwed,
-    totalOwing,
-    activeTrips: trips,
-    recentExpenses: [], // No recent expenses on dashboard for now since we don't have all trips data
-  };
-
   if (view === 'dashboard') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
@@ -137,16 +114,20 @@ const Index = () => {
             </Button>
           </div>
           
-          {tripsLoading ? (
+          {dashboardLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              Loading trips...
+              Loading dashboard...
             </div>
-          ) : (
+          ) : dashboardData ? (
             <UserDashboard 
               dashboardData={dashboardData}
               onSelectTrip={handleSelectTrip}
             />
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <p className="text-slate-600">No dashboard data available</p>
+            </div>
           )}
         </div>
       </div>
