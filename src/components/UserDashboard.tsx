@@ -103,7 +103,7 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentExpenses.slice(0, 5).map((expense) => (
+              {recentExpenses.slice(0, 5).map((expense: Expense & { tripName: string }) => (
                 <div key={expense.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div>
                     <p className="font-medium text-slate-800">{expense.description}</p>
