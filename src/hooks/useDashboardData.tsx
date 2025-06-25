@@ -36,10 +36,6 @@ export const useDashboardData = () => {
 
       // For each trip, check if user is involved and calculate balances
       for (const trip of allTrips || []) {
-        let isUserInTrip = false;
-        let currentUserParticipantId = '';
-
-        // Check if user is the creator
         const isCreator = trip.created_by === user.id;
         
         // Get all participants for this trip
@@ -54,6 +50,8 @@ export const useDashboardData = () => {
         }
 
         const participants: (Participant & { role: string })[] = [];
+        let userParticipantId = '';
+        let isUserInTrip = false;
         
         // Check each participant to see if current user is involved
         for (const tp of tripParticipants || []) {
@@ -76,12 +74,12 @@ export const useDashboardData = () => {
             // Check if this participant is the current user
             if (participantData.user_id === user.id || participantData.email === user.email) {
               isUserInTrip = true;
-              currentUserParticipantId = participantData.id;
+              userParticipantId = participantData.id;
             }
           }
         }
 
-        // Skip trips where user is not involved
+        // Skip trips where user is not involved and not the creator
         if (!isCreator && !isUserInTrip) {
           continue;
         }
@@ -135,7 +133,7 @@ export const useDashboardData = () => {
         // Calculate balances for this trip if user is involved and there are expenses
         if ((isCreator || isUserInTrip) && expenses.length > 0) {
           console.log(`Calculating balances for trip: ${trip.name}`);
-          console.log(`User participant ID: ${currentUserParticipantId}`);
+          console.log(`User participant ID: ${userParticipantId}`);
           console.log(`Is creator: ${isCreator}`);
           console.log(`Number of expenses: ${expenses.length}`);
           console.log(`Number of participants: ${participants.length}`);
@@ -145,21 +143,6 @@ export const useDashboardData = () => {
           participants.forEach(p => {
             balances[p.id] = 0;
           });
-
-          // If user is creator but not a participant, add them to balances
-          if (isCreator && !currentUserParticipantId) {
-            // Find or create a participant record for the creator
-            const { data: creatorParticipant } = await supabase
-              .from('participants')
-              .select('*')
-              .eq('user_id', user.id)
-              .single();
-            
-            if (creatorParticipant) {
-              currentUserParticipantId = creatorParticipant.id;
-              balances[creatorParticipant.id] = 0;
-            }
-          }
 
           // Calculate balances from expenses
           expenses.forEach(expense => {
@@ -183,15 +166,48 @@ export const useDashboardData = () => {
 
           console.log('Calculated balances:', balances);
 
-          // Get current user's balance
-          const currentUserBalance = balances[currentUserParticipantId] || 0;
-          
-          console.log(`User balance for trip ${trip.name}: ${currentUserBalance}`);
-          
-          if (currentUserBalance > 0) {
-            totalOwed += currentUserBalance;
-          } else if (currentUserBalance < 0) {
-            totalOwing += Math.abs(currentUserBalance);
+          // For trip creators, we need to check if they appear in any expense
+          if (isCreator && !userParticipantId) {
+            // Check if the creator appears in any expense (as payer or split participant)
+            let creatorBalance = 0;
+            
+            expenses.forEach(expense => {
+              const splitAmount = expense.amount / expense.splitBetween.length;
+              
+              // Check if creator paid for this expense
+              const creatorPaidExpense = participants.find(p => p.id === expense.paidBy && p.userId === user.id);
+              if (creatorPaidExpense) {
+                creatorBalance += expense.amount;
+              }
+              
+              // Check if creator is in split_between
+              const creatorInSplit = expense.splitBetween.find(participantId => {
+                const participant = participants.find(p => p.id === participantId);
+                return participant && participant.userId === user.id;
+              });
+              if (creatorInSplit) {
+                creatorBalance -= splitAmount;
+              }
+            });
+            
+            console.log(`Creator balance for trip ${trip.name}: ${creatorBalance}`);
+            
+            if (creatorBalance > 0) {
+              totalOwed += creatorBalance;
+            } else if (creatorBalance < 0) {
+              totalOwing += Math.abs(creatorBalance);
+            }
+          } else if (userParticipantId) {
+            // Get current user's balance from calculated balances
+            const currentUserBalance = balances[userParticipantId] || 0;
+            
+            console.log(`User balance for trip ${trip.name}: ${currentUserBalance}`);
+            
+            if (currentUserBalance > 0) {
+              totalOwed += currentUserBalance;
+            } else if (currentUserBalance < 0) {
+              totalOwing += Math.abs(currentUserBalance);
+            }
           }
         }
       }
