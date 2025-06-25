@@ -39,24 +39,40 @@ export const useDashboardData = () => {
         // Check if user is the creator or a participant
         const { data: userParticipant, error: participantError } = await supabase
           .from('trip_participants')
-          .select(`
-            participant_id,
-            role,
-            participants!fk_trip_participants_participant (
-              id,
-              name,
-              email,
-              avatar,
-              user_id
-            )
-          `)
-          .eq('trip_id', trip.id)
-          .or(`participants.user_id.eq.${user.id},participants.email.eq.${user.email}`);
+          .select('participant_id, role')
+          .eq('trip_id', trip.id);
+
+        if (participantError) {
+          console.error('Error fetching trip participants:', participantError);
+          continue;
+        }
+
+        // Get participant details separately to avoid foreign key issues
+        let isUserInTrip = false;
+        let currentUserParticipantId = '';
+
+        if (userParticipant && userParticipant.length > 0) {
+          // Check each participant to see if any match the current user
+          for (const tp of userParticipant) {
+            const { data: participantData, error: participantDataError } = await supabase
+              .from('participants')
+              .select('*')
+              .eq('id', tp.participant_id)
+              .single();
+
+            if (!participantDataError && participantData) {
+              if (participantData.user_id === user.id || participantData.email === user.email) {
+                isUserInTrip = true;
+                currentUserParticipantId = participantData.id;
+                break;
+              }
+            }
+          }
+        }
 
         const isCreator = trip.created_by === user.id;
-        const isParticipant = userParticipant && userParticipant.length > 0;
 
-        if (!isCreator && !isParticipant) {
+        if (!isCreator && !isUserInTrip) {
           continue; // Skip trips where user is not involved
         }
 
@@ -74,29 +90,34 @@ export const useDashboardData = () => {
         });
 
         // Get all participants for this trip
-        const { data: tripParticipants, error: allParticipantsError } = await supabase
+        const { data: allTripParticipants, error: allParticipantsError } = await supabase
           .from('trip_participants')
-          .select(`
-            participant_id,
-            role,
-            participants!fk_trip_participants_participant (
-              id,
-              name,
-              email,
-              avatar,
-              user_id
-            )
-          `)
+          .select('participant_id, role')
           .eq('trip_id', trip.id);
 
         if (allParticipantsError) continue;
 
-        const participants = tripParticipants
-          .filter(tp => tp.participants !== null)
-          .map(tp => ({
-            ...(tp.participants as any),
-            role: tp.role,
-          })) as (Participant & { role: string })[];
+        const participants: (Participant & { role: string })[] = [];
+        
+        // Get participant details for each trip participant
+        for (const tp of allTripParticipants || []) {
+          const { data: participantData, error: participantDataError } = await supabase
+            .from('participants')
+            .select('*')
+            .eq('id', tp.participant_id)
+            .single();
+
+          if (!participantDataError && participantData) {
+            participants.push({
+              id: participantData.id,
+              name: participantData.name,
+              email: participantData.email,
+              avatar: participantData.avatar,
+              userId: participantData.user_id,
+              role: tp.role,
+            });
+          }
+        }
 
         // Get expenses for this trip
         const { data: tripExpenses, error: expensesError } = await supabase
