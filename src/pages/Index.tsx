@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ParticipantManager from "@/components/ParticipantManager";
 import ExpenseEntry from "@/components/ExpenseEntry";
+import ExpensesList from "@/components/ExpensesList";
 import BalanceView from "@/components/BalanceView";
 import TripHeader from "@/components/TripHeader";
 import UserDashboard from "@/components/UserDashboard";
@@ -15,6 +16,7 @@ import AuthPage from "@/components/AuthPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips, useTripData } from "@/hooks/useTrips";
 import { useParticipants } from "@/hooks/useParticipants";
+import { useExpenses } from "@/hooks/useExpenses";
 import { Trip } from "@/types/trip";
 import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
 import { Loader2 } from "lucide-react";
@@ -36,6 +38,16 @@ const Index = () => {
     isAddingParticipant,
     isRemovingParticipant,
   } = useParticipants(selectedTrip?.id || null);
+
+  // Use the expenses hook for the selected trip
+  const {
+    expenses: realExpenses,
+    expensesLoading: realExpensesLoading,
+    addExpense,
+    deleteExpense,
+    isAddingExpense,
+    isDeletingExpense,
+  } = useExpenses(selectedTrip?.id || null);
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -70,14 +82,23 @@ const Index = () => {
     createTrip(tripData);
   };
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const handleAddExpense = (expenseData: any) => {
+    if (selectedTrip) {
+      addExpense({
+        ...expenseData,
+        tripId: selectedTrip.id,
+      });
+    }
+  };
+
+  const totalExpenses = realExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   // Mock dashboard data - will be replaced with real data
   const dashboardData = {
     totalOwed: 0,
     totalOwing: 0,
     activeTrips: trips,
-    recentExpenses: expenses.slice(-5),
+    recentExpenses: realExpenses.slice(-5),
   };
 
   if (view === 'dashboard') {
@@ -202,7 +223,7 @@ const Index = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {expensesLoading ? (
+                    {realExpensesLoading ? (
                       <div className="flex items-center justify-center py-4">
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Loading expenses...
@@ -210,12 +231,31 @@ const Index = () => {
                     ) : (
                       <ExpenseEntry 
                         participants={realParticipants}
-                        expenses={expenses}
-                        onAddExpense={() => {}} // Will be implemented
+                        expenses={realExpenses}
+                        onAddExpense={handleAddExpense}
                       />
                     )}
                   </CardContent>
                 </Card>
+
+                {realExpenses.length > 0 && (
+                  <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-slate-800">
+                        <Receipt className="w-5 h-5 text-green-600" />
+                        Expense History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ExpensesList
+                        expenses={realExpenses}
+                        participants={realParticipants}
+                        onDeleteExpense={deleteExpense}
+                        isDeleting={isDeletingExpense}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="balances" className="space-y-6">
@@ -232,7 +272,7 @@ const Index = () => {
                   <CardContent>
                     <BalanceView 
                       participants={realParticipants}
-                      expenses={expenses}
+                      expenses={realExpenses}
                     />
                   </CardContent>
                 </Card>
