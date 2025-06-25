@@ -51,7 +51,7 @@ export const useParticipants = (tripId: string | null) => {
   });
 
   const addParticipantMutation = useMutation({
-    mutationFn: async ({ name, email }: { name: string; email: string }) => {
+    mutationFn: async ({ name, email, userId }: { name: string; email: string; userId?: string }) => {
       if (!tripId) {
         throw new Error('No trip selected');
       }
@@ -59,6 +59,8 @@ export const useParticipants = (tripId: string | null) => {
       if (!user) {
         throw new Error('User not authenticated');
       }
+
+      console.log('Adding participant:', { name, email, userId });
 
       // First, create or get the participant
       const { data: existingParticipant, error: existingError } = await supabase
@@ -74,11 +76,29 @@ export const useParticipants = (tripId: string | null) => {
       let participantId: string;
 
       if (existingParticipant) {
+        console.log('Using existing participant:', existingParticipant.id);
         participantId = existingParticipant.id;
+        
+        // Update the participant record with user_id if provided and not already set
+        if (userId && !existingParticipant.user_id) {
+          const { error: updateError } = await supabase
+            .from('participants')
+            .update({ user_id: userId })
+            .eq('id', existingParticipant.id);
+          
+          if (updateError) {
+            console.error('Error updating participant user_id:', updateError);
+          }
+        }
       } else {
+        console.log('Creating new participant');
         const { data: newParticipant, error: participantError } = await supabase
           .from('participants')
-          .insert([{ name, email }])
+          .insert([{ 
+            name, 
+            email,
+            user_id: userId || null
+          }])
           .select()
           .single();
 
@@ -119,10 +139,43 @@ export const useParticipants = (tripId: string | null) => {
         throw error;
       }
 
+      // If the participant has a user_id, create a notification
+      if (userId) {
+        console.log('Creating notification for user:', userId);
+        
+        // Get trip name for notification
+        const { data: tripData } = await supabase
+          .from('trips')
+          .select('name')
+          .eq('id', tripId)
+          .single();
+
+        const tripName = tripData?.name || 'a trip';
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert([{
+            user_id: userId,
+            title: 'Added to Trip',
+            message: `You've been added to "${tripName}" by ${user.email}`,
+            data: {
+              trip_id: tripId,
+              trip_name: tripName,
+              added_by: user.email
+            }
+          }]);
+
+        if (notificationError) {
+          console.error('Error creating notification:', notificationError);
+          // Don't throw here as the main operation succeeded
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
       toast({
         title: "Participant added!",
         description: "The participant has been added to the trip.",
@@ -154,6 +207,7 @@ export const useParticipants = (tripId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
       toast({
         title: "Participant removed",
         description: "The participant has been removed from the trip.",

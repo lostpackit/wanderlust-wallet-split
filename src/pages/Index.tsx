@@ -94,6 +94,11 @@ const Index = () => {
     }
   };
 
+  // Enhanced add participant handler that accepts userId
+  const handleAddParticipant = (participantData: { name: string; email: string; userId?: string }) => {
+    addParticipant(participantData);
+  };
+
   const totalExpenses = realExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   if (view === 'dashboard') {
@@ -183,14 +188,14 @@ const Index = () => {
                       Trip Participants
                     </CardTitle>
                     <CardDescription>
-                      Add everyone who will be sharing expenses on this trip
+                      Search for existing users or add new people to share expenses on this trip
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-lg font-semibold">Participants ({realParticipants.length})</h3>
                       <AddParticipantModal 
-                        onAddParticipant={addParticipant}
+                        onAddParticipant={handleAddParticipant}
                         isLoading={isAddingParticipant}
                       />
                     </div>
@@ -202,7 +207,7 @@ const Index = () => {
                     ) : (
                       <ParticipantManager 
                         participants={realParticipants}
-                        onAddParticipant={(participant) => addParticipant({ name: participant.name, email: participant.email })}
+                        onAddParticipant={(participant) => handleAddParticipant({ name: participant.name, email: participant.email })}
                         onRemoveParticipant={removeParticipant}
                       />
                     )}

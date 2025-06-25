@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PlusCircle, Trash2, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PlusCircle, Trash2, Users, UserCheck, Mail } from "lucide-react";
 import { Participant } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
@@ -50,6 +51,24 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   };
 
+  const getParticipantStatus = (participant: Participant & { role?: string }) => {
+    if (participant.userId) {
+      return {
+        label: 'Member',
+        icon: UserCheck,
+        variant: 'default' as const,
+        description: 'Registered user'
+      };
+    } else {
+      return {
+        label: 'Invited',
+        icon: Mail,
+        variant: 'secondary' as const,
+        description: 'Invitation sent'
+      };
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -89,40 +108,51 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {participants.map((participant) => (
-            <Card key={participant.id} className="bg-white hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="bg-gradient-to-br from-blue-500 to-purple-600">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                        {getInitials(participant.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold text-slate-800">{participant.name}</p>
-                      {participant.email && (
-                        <p className="text-sm text-slate-500">{participant.email}</p>
-                      )}
-                      {participant.role && (
-                        <span className="inline-block text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1">
-                          {participant.role}
-                        </span>
-                      )}
+          {participants.map((participant) => {
+            const status = getParticipantStatus(participant);
+            const StatusIcon = status.icon;
+            
+            return (
+              <Card key={participant.id} className="bg-white hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                          {getInitials(participant.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-800 truncate">{participant.name}</p>
+                        {participant.email && (
+                          <p className="text-sm text-slate-500 truncate">{participant.email}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {participant.role && (
+                            <Badge variant="outline" className="text-xs">
+                              {participant.role}
+                            </Badge>
+                          )}
+                          <Badge variant={status.variant} className="text-xs flex items-center gap-1">
+                            <StatusIcon className="w-3 h-3" />
+                            {status.label}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveParticipant(participant.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveParticipant(participant.id)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
