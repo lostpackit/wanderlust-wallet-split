@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapIcon, DollarSignIcon, TrendingUpIcon, TrendingDownIcon, CalendarIcon } from "lucide-react";
-import { Trip, UserDashboardData } from "@/types/trip";
+import { Trip, UserDashboardData, Expense } from "@/types/trip";
 import { format } from "date-fns";
 
 interface UserDashboardProps {
-  dashboardData: UserDashboardData;
+  dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string })[] };
   onSelectTrip: (trip: Trip) => void;
 }
 
@@ -109,6 +109,9 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
                     <p className="font-medium text-slate-800">{expense.description}</p>
                     <p className="text-sm text-slate-500">
                       {format(new Date(expense.date), "MMM d, yyyy")} • {expense.category}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Trip: {expense.tripName}
                     </p>
                   </div>
                   <div className="text-right">
