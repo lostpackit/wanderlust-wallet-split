@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PlusCircle, DollarSign, CalendarIcon, Upload } from "lucide-react";
+import { PlusCircle, DollarSign, CalendarIcon, Upload, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Participant, Expense } from "@/types/trip";
