@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +48,51 @@ const Index = () => {
     isDeletingExpense,
   } = useExpenses(selectedTrip?.id || null);
 
+  // Calculate dashboard totals across all trips
+  const calculateDashboardTotals = () => {
+    let totalOwed = 0;
+    let totalOwing = 0;
+    
+    // For now, we'll calculate based on the selected trip's expenses
+    // In a full implementation, this would aggregate across all user's trips
+    if (realExpenses.length > 0 && realParticipants.length > 0 && user) {
+      // Find the current user's participant record
+      const currentUserParticipant = realParticipants.find(p => p.userId === user.id || p.email === user.email);
+      
+      if (currentUserParticipant) {
+        const balances: { [participantId: string]: number } = {};
+        
+        // Initialize balances
+        realParticipants.forEach(p => {
+          balances[p.id] = 0;
+        });
+
+        // Calculate balances
+        realExpenses.forEach(expense => {
+          const splitAmount = expense.amount / expense.splitBetween.length;
+          
+          // The person who paid gets credited
+          balances[expense.paidBy] += expense.amount;
+          
+          // Everyone who should split it gets debited
+          expense.splitBetween.forEach(participantId => {
+            balances[participantId] -= splitAmount;
+          });
+        });
+
+        const currentUserBalance = balances[currentUserParticipant.id] || 0;
+        
+        if (currentUserBalance > 0) {
+          totalOwed = currentUserBalance;
+        } else if (currentUserBalance < 0) {
+          totalOwing = Math.abs(currentUserBalance);
+        }
+      }
+    }
+    
+    return { totalOwed, totalOwing };
+  };
+
   // Show loading screen while checking authentication
   if (authLoading) {
     return (
@@ -93,10 +137,11 @@ const Index = () => {
 
   const totalExpenses = realExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-  // Mock dashboard data - will be replaced with real data
+  // Calculate actual dashboard data
+  const { totalOwed, totalOwing } = calculateDashboardTotals();
   const dashboardData = {
-    totalOwed: 0,
-    totalOwing: 0,
+    totalOwed,
+    totalOwing,
     activeTrips: trips,
     recentExpenses: realExpenses.slice(-5),
   };
