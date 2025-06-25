@@ -43,7 +43,12 @@ export const useTrips = () => {
 
   const createTripMutation = useMutation({
     mutationFn: async (tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
-      const { data, error } = await supabase
+      if (!user) throw new Error('User not authenticated');
+
+      console.log('Creating trip with automatic creator participation...');
+
+      // Step 1: Create the trip
+      const { data: tripRecord, error: tripError } = await supabase
         .from('trips')
         .insert([{
           name: tripData.name,
@@ -51,34 +56,101 @@ export const useTrips = () => {
           start_date: tripData.startDate,
           end_date: tripData.endDate,
           settlement_deadline: tripData.settlementDeadline,
-          created_by: user!.id,
+          created_by: user.id,
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (tripError) {
+        console.error('Error creating trip:', tripError);
+        throw tripError;
+      }
+
+      console.log('Trip created:', tripRecord.id);
+
+      // Step 2: Create or get participant record for the creator
+      let participantRecord;
       
-      // Transform the returned data to match our Trip interface
+      // First, check if a participant record already exists for this user
+      const { data: existingParticipant, error: existingParticipantError } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingParticipantError) {
+        console.error('Error checking for existing participant:', existingParticipantError);
+        throw existingParticipantError;
+      }
+
+      if (existingParticipant) {
+        console.log('Using existing participant record:', existingParticipant.id);
+        participantRecord = existingParticipant;
+      } else {
+        // Create a new participant record for the creator
+        const creatorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Trip Creator';
+        
+        const { data: newParticipant, error: participantError } = await supabase
+          .from('participants')
+          .insert([{
+            name: creatorName,
+            email: user.email!,
+            user_id: user.id,
+          }])
+          .select()
+          .single();
+
+        if (participantError) {
+          console.error('Error creating participant:', participantError);
+          throw participantError;
+        }
+
+        console.log('Created new participant record:', newParticipant.id);
+        participantRecord = newParticipant;
+      }
+
+      // Step 3: Add the creator as a participant to the trip with admin role
+      const { error: tripParticipantError } = await supabase
+        .from('trip_participants')
+        .insert([{
+          trip_id: tripRecord.id,
+          participant_id: participantRecord.id,
+          role: 'admin', // Trip creator gets admin role
+        }]);
+
+      if (tripParticipantError) {
+        console.error('Error adding creator as trip participant:', tripParticipantError);
+        throw tripParticipantError;
+      }
+
+      console.log('Creator added as trip participant with admin role');
+
+      // Transform the returned trip data to match our Trip interface
       return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        startDate: data.start_date,
-        endDate: data.end_date,
-        settlementDeadline: data.settlement_deadline,
-        createdBy: data.created_by,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
+        id: tripRecord.id,
+        name: tripRecord.name,
+        description: tripRecord.description,
+        startDate: tripRecord.start_date,
+        endDate: tripRecord.end_date,
+        settlementDeadline: tripRecord.settlement_deadline,
+        createdBy: tripRecord.created_by,
+        createdAt: tripRecord.created_at,
+        updatedAt: tripRecord.updated_at,
       };
     },
     onSuccess: () => {
+      // Invalidate multiple queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      
       toast({
         title: "Trip created!",
-        description: "Your new trip has been created successfully.",
+        description: "Your new trip has been created and you've been added as an admin.",
       });
     },
     onError: (error) => {
+      console.error('Trip creation failed:', error);
       toast({
         title: "Failed to create trip",
         description: error.message,
