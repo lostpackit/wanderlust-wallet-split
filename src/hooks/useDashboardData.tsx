@@ -36,71 +36,27 @@ export const useDashboardData = () => {
 
       // For each trip, check if user is involved and calculate balances
       for (const trip of allTrips || []) {
-        // Check if user is the creator or a participant
-        const { data: userParticipant, error: participantError } = await supabase
-          .from('trip_participants')
-          .select('participant_id, role')
-          .eq('trip_id', trip.id);
-
-        if (participantError) {
-          console.error('Error fetching trip participants:', participantError);
-          continue;
-        }
-
-        // Get participant details separately to avoid foreign key issues
         let isUserInTrip = false;
         let currentUserParticipantId = '';
 
-        if (userParticipant && userParticipant.length > 0) {
-          // Check each participant to see if any match the current user
-          for (const tp of userParticipant) {
-            const { data: participantData, error: participantDataError } = await supabase
-              .from('participants')
-              .select('*')
-              .eq('id', tp.participant_id)
-              .single();
-
-            if (!participantDataError && participantData) {
-              if (participantData.user_id === user.id || participantData.email === user.email) {
-                isUserInTrip = true;
-                currentUserParticipantId = participantData.id;
-                break;
-              }
-            }
-          }
-        }
-
+        // Check if user is the creator
         const isCreator = trip.created_by === user.id;
-
-        if (!isCreator && !isUserInTrip) {
-          continue; // Skip trips where user is not involved
-        }
-
-        // Add to user's trips
-        userTrips.push({
-          id: trip.id,
-          name: trip.name,
-          description: trip.description,
-          startDate: trip.start_date,
-          endDate: trip.end_date,
-          settlementDeadline: trip.settlement_deadline,
-          createdBy: trip.created_by,
-          createdAt: trip.created_at,
-          updatedAt: trip.updated_at,
-        });
-
+        
         // Get all participants for this trip
-        const { data: allTripParticipants, error: allParticipantsError } = await supabase
+        const { data: tripParticipants, error: participantsError } = await supabase
           .from('trip_participants')
           .select('participant_id, role')
           .eq('trip_id', trip.id);
 
-        if (allParticipantsError) continue;
+        if (participantsError) {
+          console.error('Error fetching trip participants:', participantsError);
+          continue;
+        }
 
         const participants: (Participant & { role: string })[] = [];
         
-        // Get participant details for each trip participant
-        for (const tp of allTripParticipants || []) {
+        // Check each participant to see if current user is involved
+        for (const tp of tripParticipants || []) {
           const { data: participantData, error: participantDataError } = await supabase
             .from('participants')
             .select('*')
@@ -116,8 +72,32 @@ export const useDashboardData = () => {
               userId: participantData.user_id,
               role: tp.role,
             });
+
+            // Check if this participant is the current user
+            if (participantData.user_id === user.id || participantData.email === user.email) {
+              isUserInTrip = true;
+              currentUserParticipantId = participantData.id;
+            }
           }
         }
+
+        // Skip trips where user is not involved
+        if (!isCreator && !isUserInTrip) {
+          continue;
+        }
+
+        // Add to user's trips
+        userTrips.push({
+          id: trip.id,
+          name: trip.name,
+          description: trip.description,
+          startDate: trip.start_date,
+          endDate: trip.end_date,
+          settlementDeadline: trip.settlement_deadline,
+          createdBy: trip.created_by,
+          createdAt: trip.created_at,
+          updatedAt: trip.updated_at,
+        });
 
         // Get expenses for this trip
         const { data: tripExpenses, error: expensesError } = await supabase
@@ -126,7 +106,10 @@ export const useDashboardData = () => {
           .eq('trip_id', trip.id)
           .order('created_at', { ascending: false });
 
-        if (expensesError) continue;
+        if (expensesError) {
+          console.error('Error fetching expenses:', expensesError);
+          continue;
+        }
 
         const expenses: Expense[] = tripExpenses.map((expense): Expense => ({
           id: expense.id,
@@ -149,36 +132,59 @@ export const useDashboardData = () => {
         }));
         allRecentExpenses.push(...expensesWithTrip);
 
-        // Find the current user's participant record in this trip
-        const currentUserParticipant = participants.find(p => 
-          p.userId === user.id || p.email === user.email
-        );
-
-        if (currentUserParticipant && expenses.length > 0) {
+        // Calculate balances for this trip if user is involved and there are expenses
+        if ((isCreator || isUserInTrip) && expenses.length > 0) {
           console.log(`Calculating balances for trip: ${trip.name}`);
+          console.log(`User participant ID: ${currentUserParticipantId}`);
+          console.log(`Is creator: ${isCreator}`);
+          console.log(`Number of expenses: ${expenses.length}`);
+          console.log(`Number of participants: ${participants.length}`);
           
-          // Calculate balances for this trip
+          // Initialize balances for all participants
           const balances: { [participantId: string]: number } = {};
-          
-          // Initialize balances
           participants.forEach(p => {
             balances[p.id] = 0;
           });
 
-          // Calculate balances
+          // If user is creator but not a participant, add them to balances
+          if (isCreator && !currentUserParticipantId) {
+            // Find or create a participant record for the creator
+            const { data: creatorParticipant } = await supabase
+              .from('participants')
+              .select('*')
+              .eq('user_id', user.id)
+              .single();
+            
+            if (creatorParticipant) {
+              currentUserParticipantId = creatorParticipant.id;
+              balances[creatorParticipant.id] = 0;
+            }
+          }
+
+          // Calculate balances from expenses
           expenses.forEach(expense => {
             const splitAmount = expense.amount / expense.splitBetween.length;
             
+            console.log(`Processing expense: ${expense.description}, amount: ${expense.amount}, split: ${splitAmount}`);
+            console.log(`Paid by: ${expense.paidBy}, split between: ${expense.splitBetween}`);
+            
             // The person who paid gets credited
-            balances[expense.paidBy] += expense.amount;
+            if (balances.hasOwnProperty(expense.paidBy)) {
+              balances[expense.paidBy] += expense.amount;
+            }
             
             // Everyone who should split it gets debited
             expense.splitBetween.forEach(participantId => {
-              balances[participantId] -= splitAmount;
+              if (balances.hasOwnProperty(participantId)) {
+                balances[participantId] -= splitAmount;
+              }
             });
           });
 
-          const currentUserBalance = balances[currentUserParticipant.id] || 0;
+          console.log('Calculated balances:', balances);
+
+          // Get current user's balance
+          const currentUserBalance = balances[currentUserParticipantId] || 0;
           
           console.log(`User balance for trip ${trip.name}: ${currentUserBalance}`);
           
