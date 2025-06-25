@@ -20,6 +20,9 @@ export const useParticipants = (tripId: string | null) => {
     queryFn: async () => {
       if (!tripId) return [];
       
+      console.log('Fetching participants for trip:', tripId);
+      console.log('Current user:', user?.id);
+      
       const { data, error } = await supabase
         .from('trip_participants')
         .select(`
@@ -35,7 +38,13 @@ export const useParticipants = (tripId: string | null) => {
         `)
         .eq('trip_id', tripId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching participants:', error);
+        throw error;
+      }
+      
+      console.log('Raw participants data:', data);
+      
       return data
         .filter(tp => tp.participants !== null)
         .map(tp => ({
@@ -50,6 +59,9 @@ export const useParticipants = (tripId: string | null) => {
     mutationFn: async ({ name, email }: { name: string; email: string }) => {
       if (!tripId) throw new Error('No trip selected');
 
+      console.log('Adding participant:', { name, email, tripId });
+      console.log('Current authenticated user:', user?.id);
+
       // First, create or get the participant
       const { data: existingParticipant } = await supabase
         .from('participants')
@@ -57,18 +69,28 @@ export const useParticipants = (tripId: string | null) => {
         .eq('email', email)
         .maybeSingle();
 
+      console.log('Existing participant check:', existingParticipant);
+
       let participantId: string;
 
       if (existingParticipant) {
         participantId = existingParticipant.id;
+        console.log('Using existing participant:', participantId);
       } else {
+        console.log('Creating new participant with data:', { name, email });
+        
         const { data: newParticipant, error: participantError } = await supabase
           .from('participants')
           .insert([{ name, email }])
           .select()
           .single();
 
-        if (participantError) throw participantError;
+        console.log('Participant creation result:', { data: newParticipant, error: participantError });
+
+        if (participantError) {
+          console.error('Participant creation error:', participantError);
+          throw participantError;
+        }
         participantId = newParticipant.id;
       }
 
@@ -80,11 +102,15 @@ export const useParticipants = (tripId: string | null) => {
         .eq('participant_id', participantId)
         .maybeSingle();
 
+      console.log('Existing trip participant check:', existingTripParticipant);
+
       if (existingTripParticipant) {
         throw new Error('Participant is already in this trip');
       }
 
       // Add participant to trip
+      console.log('Adding participant to trip:', { tripId, participantId });
+      
       const { data, error } = await supabase
         .from('trip_participants')
         .insert([{
@@ -95,10 +121,16 @@ export const useParticipants = (tripId: string | null) => {
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('Trip participant creation result:', { data, error });
+
+      if (error) {
+        console.error('Trip participant creation error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
+      console.log('Participant added successfully');
       queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
       toast({
         title: "Participant added!",
@@ -106,6 +138,7 @@ export const useParticipants = (tripId: string | null) => {
       });
     },
     onError: (error: Error) => {
+      console.error('Add participant mutation error:', error);
       toast({
         title: "Failed to add participant",
         description: error.message,
@@ -118,15 +151,21 @@ export const useParticipants = (tripId: string | null) => {
     mutationFn: async (participantId: string) => {
       if (!tripId) throw new Error('No trip selected');
 
+      console.log('Removing participant:', { participantId, tripId });
+
       const { error } = await supabase
         .from('trip_participants')
         .delete()
         .eq('trip_id', tripId)
         .eq('participant_id', participantId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Remove participant error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log('Participant removed successfully');
       queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
       toast({
         title: "Participant removed",
@@ -134,6 +173,7 @@ export const useParticipants = (tripId: string | null) => {
       });
     },
     onError: (error: Error) => {
+      console.error('Remove participant mutation error:', error);
       toast({
         title: "Failed to remove participant",
         description: error.message,
