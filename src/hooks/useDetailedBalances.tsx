@@ -15,25 +15,36 @@ export const useDetailedBalances = () => {
   } = useQuery({
     queryKey: ['detailed-balances', user?.id],
     queryFn: async (): Promise<DetailedBalances | null> => {
-      if (!user) return null;
+      if (!user) {
+        console.log('No user found, returning null');
+        return null;
+      }
 
       console.log('Fetching detailed balances for user:', user.id);
 
-      // Get all trips for the user
+      // Get all trips for the user (created by them or participating in)
       const { data: allTrips, error: tripsError } = await supabase
         .from('trips')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (tripsError) throw tripsError;
+      if (tripsError) {
+        console.error('Error fetching trips:', tripsError);
+        throw tripsError;
+      }
+
+      console.log('All trips from database:', allTrips?.length || 0);
 
       const allExpenses: { [tripId: string]: Expense[] } = {};
       const allParticipants: { [tripId: string]: (Participant & { role: string })[] } = {};
       const userTrips: Trip[] = [];
 
-      // Process each trip
+      // Process each trip to see if user is involved
       for (const trip of allTrips || []) {
+        console.log(`Processing trip: ${trip.name} (${trip.id})`);
+        
         const isCreator = trip.created_by === user.id;
+        console.log(`User is creator of ${trip.name}:`, isCreator);
         
         // Get participants for this trip
         const { data: tripParticipants, error: participantsError } = await supabase
@@ -56,19 +67,30 @@ export const useDetailedBalances = () => {
           continue;
         }
 
+        console.log(`Trip participants for ${trip.name}:`, tripParticipants);
+
         const participants: (Participant & { role: string })[] = tripParticipants
           ?.filter(tp => tp.participants !== null)
           .map(tp => ({
-            ...(tp.participants as any),
+            id: (tp.participants as any).id,
+            name: (tp.participants as any).name,
+            email: (tp.participants as any).email,
+            avatar: (tp.participants as any).avatar,
+            userId: (tp.participants as any).user_id,
             role: tp.role,
           })) || [];
 
-        // Check if user is involved in this trip
+        console.log(`Processed participants for ${trip.name}:`, participants);
+
+        // Check if user is involved in this trip (creator or participant)
         const isUserInTrip = participants.some(p => 
           p.userId === user.id || p.email === user.email
         );
 
+        console.log(`User is in trip ${trip.name}:`, isUserInTrip);
+
         if (!isCreator && !isUserInTrip) {
+          console.log(`Skipping trip ${trip.name} - user not involved`);
           continue;
         }
 
@@ -97,6 +119,8 @@ export const useDetailedBalances = () => {
           continue;
         }
 
+        console.log(`Expenses for trip ${trip.name}:`, tripExpenses?.length || 0);
+
         const expenses: Expense[] = tripExpenses?.map((expense): Expense => ({
           id: expense.id,
           tripId: expense.trip_id,
@@ -115,6 +139,10 @@ export const useDetailedBalances = () => {
         allParticipants[trip.id] = participants;
       }
 
+      console.log('User trips:', userTrips.length);
+      console.log('All expenses keys:', Object.keys(allExpenses));
+      console.log('All participants keys:', Object.keys(allParticipants));
+
       // Calculate detailed balances
       const detailedBalances = calculateDetailedBalances(
         userTrips,
@@ -123,7 +151,7 @@ export const useDetailedBalances = () => {
         user.id
       );
 
-      console.log('Calculated detailed balances:', detailedBalances);
+      console.log('Final calculated detailed balances:', detailedBalances);
       return detailedBalances;
     },
     enabled: !!user,

@@ -23,15 +23,27 @@ export const calculateDetailedBalances = (
   allParticipants: { [tripId: string]: (Participant & { role: string })[] },
   currentUserId: string
 ): DetailedBalances => {
+  console.log('calculateDetailedBalances called with:', {
+    tripsCount: trips.length,
+    expensesKeys: Object.keys(allExpenses),
+    participantsKeys: Object.keys(allParticipants),
+    currentUserId
+  });
+
   const owedByMeMap = new Map<string, PersonBalance>();
   const owedToMeMap = new Map<string, PersonBalance>();
 
   // Process each trip
   trips.forEach(trip => {
+    console.log(`Processing trip ${trip.id} - ${trip.name}`);
+    
     const tripExpenses = allExpenses[trip.id] || [];
     const tripParticipants = allParticipants[trip.id] || [];
     
+    console.log(`Trip ${trip.name}: ${tripExpenses.length} expenses, ${tripParticipants.length} participants`);
+
     if (tripExpenses.length === 0 || tripParticipants.length === 0) {
+      console.log(`Skipping trip ${trip.name} - no expenses or participants`);
       return;
     }
 
@@ -41,10 +53,13 @@ export const calculateDetailedBalances = (
     );
     
     if (!currentUserParticipant) {
+      console.log(`Current user not found in trip ${trip.name} participants`);
       return;
     }
 
-    // Calculate balances for this trip
+    console.log(`Current user participant in ${trip.name}:`, currentUserParticipant);
+
+    // Calculate balances for this trip using the same logic as the original balance calculator
     const balances: { [participantId: string]: number } = {};
     tripParticipants.forEach(p => {
       balances[p.id] = 0;
@@ -53,6 +68,7 @@ export const calculateDetailedBalances = (
     // Process each expense
     tripExpenses.forEach(expense => {
       const splitAmount = expense.amount / expense.splitBetween.length;
+      console.log(`Processing expense ${expense.description}: $${expense.amount}, split ${splitAmount} between ${expense.splitBetween.length} people`);
       
       // The person who paid gets credited
       if (balances.hasOwnProperty(expense.paidBy)) {
@@ -67,52 +83,63 @@ export const calculateDetailedBalances = (
       });
     });
 
-    // Get current user's balance for this trip
-    const currentUserBalance = balances[currentUserParticipant.id] || 0;
+    console.log(`Balances for trip ${trip.name}:`, balances);
 
-    // Process balances with other participants
+    // Now calculate what current user owes to or is owed by each other participant
+    const currentUserBalance = balances[currentUserParticipant.id] || 0;
+    console.log(`Current user balance in ${trip.name}: ${currentUserBalance}`);
+
     tripParticipants.forEach(participant => {
       if (participant.id === currentUserParticipant.id) return;
 
       const participantBalance = balances[participant.id] || 0;
-      const netBalance = currentUserBalance - participantBalance;
-
-      if (Math.abs(netBalance) < 0.01) return; // Skip negligible amounts
-
-      if (netBalance < 0) {
-        // Current user owes this participant
-        const amount = Math.abs(netBalance);
+      
+      // If current user has negative balance and other participant has positive balance,
+      // then current user owes money to that participant
+      if (currentUserBalance < 0 && participantBalance > 0) {
+        const amountOwed = Math.min(Math.abs(currentUserBalance), participantBalance);
         
-        if (!owedByMeMap.has(participant.id)) {
-          owedByMeMap.set(participant.id, {
-            participantId: participant.id,
-            participantName: participant.name,
-            participantEmail: participant.email,
-            totalAmount: 0,
-            trips: []
-          });
+        if (amountOwed > 0.01) { // Skip negligible amounts
+          console.log(`Current user owes ${participant.name} $${amountOwed} from trip ${trip.name}`);
+          
+          if (!owedByMeMap.has(participant.id)) {
+            owedByMeMap.set(participant.id, {
+              participantId: participant.id,
+              participantName: participant.name,
+              participantEmail: participant.email,
+              totalAmount: 0,
+              trips: []
+            });
+          }
+          
+          const personBalance = owedByMeMap.get(participant.id)!;
+          personBalance.totalAmount += amountOwed;
+          personBalance.trips.push({ trip, amount: amountOwed });
         }
+      }
+      
+      // If current user has positive balance and other participant has negative balance,
+      // then that participant owes money to current user
+      else if (currentUserBalance > 0 && participantBalance < 0) {
+        const amountOwed = Math.min(currentUserBalance, Math.abs(participantBalance));
         
-        const personBalance = owedByMeMap.get(participant.id)!;
-        personBalance.totalAmount += amount;
-        personBalance.trips.push({ trip, amount });
-      } else {
-        // This participant owes current user
-        const amount = netBalance;
-        
-        if (!owedToMeMap.has(participant.id)) {
-          owedToMeMap.set(participant.id, {
-            participantId: participant.id,
-            participantName: participant.name,
-            participantEmail: participant.email,
-            totalAmount: 0,
-            trips: []
-          });
+        if (amountOwed > 0.01) { // Skip negligible amounts
+          console.log(`${participant.name} owes current user $${amountOwed} from trip ${trip.name}`);
+          
+          if (!owedToMeMap.has(participant.id)) {
+            owedToMeMap.set(participant.id, {
+              participantId: participant.id,
+              participantName: participant.name,
+              participantEmail: participant.email,
+              totalAmount: 0,
+              trips: []
+            });
+          }
+          
+          const personBalance = owedToMeMap.get(participant.id)!;
+          personBalance.totalAmount += amountOwed;
+          personBalance.trips.push({ trip, amount: amountOwed });
         }
-        
-        const personBalance = owedToMeMap.get(participant.id)!;
-        personBalance.totalAmount += amount;
-        personBalance.trips.push({ trip, amount });
       }
     });
   });
@@ -128,8 +155,11 @@ export const calculateDetailedBalances = (
       }))
     }));
 
-  return {
+  const result = {
     owedByMe: roundBalances(Array.from(owedByMeMap.values())),
     owedToMe: roundBalances(Array.from(owedToMeMap.values()))
   };
+
+  console.log('Final detailed balances result:', result);
+  return result;
 };
