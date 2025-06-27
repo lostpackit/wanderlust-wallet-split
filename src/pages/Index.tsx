@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +40,7 @@ const Index = () => {
     participantsLoading: realParticipantsLoading,
     addParticipant,
     removeParticipant,
+    updateParticipantShares,
     isAddingParticipant,
     isRemovingParticipant,
   } = useParticipants(selectedTrip?.id || null);
@@ -223,6 +223,7 @@ const Index = () => {
                         participants={realParticipants}
                         onAddParticipant={(participant) => handleAddParticipant({ name: participant.name, email: participant.email })}
                         onRemoveParticipant={removeParticipant}
+                        onUpdateShares={updateParticipantShares}
                       />
                     )}
                   </CardContent>
