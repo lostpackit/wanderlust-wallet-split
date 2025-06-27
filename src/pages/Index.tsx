@@ -113,6 +113,11 @@ const Index = () => {
     addParticipant(participantData);
   };
 
+  // Wrapper function to match the expected interface for updateParticipantShares
+  const handleUpdateParticipantShares = (participantId: string, shares: number) => {
+    updateParticipantShares({ participantId, shares });
+  };
+
   const totalExpenses = realExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   if (view === 'dashboard') {
@@ -223,7 +228,7 @@ const Index = () => {
                         participants={realParticipants}
                         onAddParticipant={(participant) => handleAddParticipant({ name: participant.name, email: participant.email })}
                         onRemoveParticipant={removeParticipant}
-                        onUpdateShares={updateParticipantShares}
+                        onUpdateShares={handleUpdateParticipantShares}
                       />
                     )}
                   </CardContent>
