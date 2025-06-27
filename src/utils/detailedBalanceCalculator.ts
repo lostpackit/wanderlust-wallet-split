@@ -21,13 +21,15 @@ export const calculateDetailedBalances = (
   trips: Trip[],
   allExpenses: { [tripId: string]: Expense[] },
   allParticipants: { [tripId: string]: (Participant & { role: string })[] },
-  currentUserId: string
+  currentUserId: string,
+  currentUserEmail: string
 ): DetailedBalances => {
   console.log('calculateDetailedBalances called with:', {
     tripsCount: trips.length,
     expensesKeys: Object.keys(allExpenses),
     participantsKeys: Object.keys(allParticipants),
-    currentUserId
+    currentUserId,
+    currentUserEmail
   });
 
   const owedByMeMap = new Map<string, PersonBalance>();
@@ -48,12 +50,28 @@ export const calculateDetailedBalances = (
     }
 
     // Find current user's participant ID for this trip
-    const currentUserParticipant = tripParticipants.find(p => 
-      p.userId === currentUserId || p.email === currentUserId
+    // Try multiple matching strategies
+    let currentUserParticipant = tripParticipants.find(p => 
+      p.userId === currentUserId
     );
+    
+    // If not found by userId, try by email
+    if (!currentUserParticipant) {
+      currentUserParticipant = tripParticipants.find(p => 
+        p.email === currentUserEmail
+      );
+    }
+    
+    // If still not found but user is the creator, try to find any participant with matching email
+    if (!currentUserParticipant && trip.createdBy === currentUserId) {
+      currentUserParticipant = tripParticipants.find(p => 
+        p.email === currentUserEmail
+      );
+    }
     
     if (!currentUserParticipant) {
       console.log(`Current user not found in trip ${trip.name} participants`);
+      console.log('Available participants:', tripParticipants.map(p => ({ id: p.id, email: p.email, userId: p.userId })));
       return;
     }
 
@@ -93,11 +111,12 @@ export const calculateDetailedBalances = (
       if (participant.id === currentUserParticipant.id) return;
 
       const participantBalance = balances[participant.id] || 0;
+      let amountOwed = 0;
       
-      // If current user has negative balance and other participant has positive balance,
-      // then current user owes money to that participant
+      // Determine the settlement amount between current user and this participant
       if (currentUserBalance < 0 && participantBalance > 0) {
-        const amountOwed = Math.min(Math.abs(currentUserBalance), participantBalance);
+        // Current user owes money to this participant
+        amountOwed = Math.min(Math.abs(currentUserBalance), participantBalance);
         
         if (amountOwed > 0.01) { // Skip negligible amounts
           console.log(`Current user owes ${participant.name} $${amountOwed} from trip ${trip.name}`);
@@ -116,12 +135,9 @@ export const calculateDetailedBalances = (
           personBalance.totalAmount += amountOwed;
           personBalance.trips.push({ trip, amount: amountOwed });
         }
-      }
-      
-      // If current user has positive balance and other participant has negative balance,
-      // then that participant owes money to current user
-      else if (currentUserBalance > 0 && participantBalance < 0) {
-        const amountOwed = Math.min(currentUserBalance, Math.abs(participantBalance));
+      } else if (currentUserBalance > 0 && participantBalance < 0) {
+        // This participant owes money to current user
+        amountOwed = Math.min(currentUserBalance, Math.abs(participantBalance));
         
         if (amountOwed > 0.01) { // Skip negligible amounts
           console.log(`${participant.name} owes current user $${amountOwed} from trip ${trip.name}`);

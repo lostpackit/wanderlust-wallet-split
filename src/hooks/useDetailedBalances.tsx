@@ -83,13 +83,15 @@ export const useDetailedBalances = () => {
         console.log(`Processed participants for ${trip.name}:`, participants);
 
         // Check if user is involved in this trip (creator or participant)
-        const isUserInTrip = participants.some(p => 
+        // For creators, they might not have a participant record, so we check both ways
+        const userParticipant = participants.find(p => 
           p.userId === user.id || p.email === user.email
         );
-
+        
+        const isUserInTrip = isCreator || !!userParticipant;
         console.log(`User is in trip ${trip.name}:`, isUserInTrip);
 
-        if (!isCreator && !isUserInTrip) {
+        if (!isUserInTrip) {
           console.log(`Skipping trip ${trip.name} - user not involved`);
           continue;
         }
@@ -148,7 +150,8 @@ export const useDetailedBalances = () => {
         userTrips,
         allExpenses,
         allParticipants,
-        user.id
+        user.id,
+        user.email // Pass user email as well for better matching
       );
 
       console.log('Final calculated detailed balances:', detailedBalances);
