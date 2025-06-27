@@ -5,19 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Trash2, Users, UserCheck, Mail } from "lucide-react";
+import { PlusCircle, Trash2, Users, UserCheck, Mail, Edit2, Check, X } from "lucide-react";
 import { Participant } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
 interface ParticipantManagerProps {
-  participants: (Participant & { role?: string })[];
-  onAddParticipant: (participant: { name: string; email: string }) => void;
+  participants: (Participant & { role?: string; shares?: number })[];
+  onAddParticipant: (participant: { name: string; email: string; shares?: number }) => void;
   onRemoveParticipant: (id: string) => void;
+  onUpdateShares?: (participantId: string, shares: number) => void;
 }
 
-const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipant }: ParticipantManagerProps) => {
+const ParticipantManager = ({ 
+  participants, 
+  onAddParticipant, 
+  onRemoveParticipant,
+  onUpdateShares 
+}: ParticipantManagerProps) => {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newShares, setNewShares] = useState(1);
+  const [editingShares, setEditingShares] = useState<string | null>(null);
+  const [tempShares, setTempShares] = useState<number>(1);
 
   const handleAddParticipant = () => {
     if (!newName.trim()) {
@@ -38,13 +47,50 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
       return;
     }
 
+    if (newShares < 1) {
+      toast({
+        title: "Invalid shares",
+        description: "Shares must be at least 1",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onAddParticipant({
       name: newName.trim(),
       email: newEmail.trim(),
+      shares: newShares,
     });
     
     setNewName('');
     setNewEmail('');
+    setNewShares(1);
+  };
+
+  const handleEditShares = (participantId: string, currentShares: number) => {
+    setEditingShares(participantId);
+    setTempShares(currentShares);
+  };
+
+  const handleSaveShares = (participantId: string) => {
+    if (tempShares < 1) {
+      toast({
+        title: "Invalid shares",
+        description: "Shares must be at least 1",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (onUpdateShares) {
+      onUpdateShares(participantId, tempShares);
+    }
+    setEditingShares(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingShares(null);
+    setTempShares(1);
   };
 
   const getInitials = (name: string) => {
@@ -69,9 +115,12 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
     }
   };
 
+  const totalShares = participants.reduce((sum, p) => sum + (p.shares || 1), 0);
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Add Participant Form */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Input
           placeholder="Enter name"
           value={newName}
@@ -79,24 +128,50 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
           onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
           className="bg-white border-slate-200"
         />
-        <div className="flex gap-2">
-          <Input
-            placeholder="Email"
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
-            className="bg-white border-slate-200 flex-1"
-          />
-          <Button 
-            onClick={handleAddParticipant}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-          >
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Add
-          </Button>
-        </div>
+        <Input
+          placeholder="Email"
+          type="email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
+          className="bg-white border-slate-200"
+        />
+        <Input
+          placeholder="Shares"
+          type="number"
+          min="1"
+          value={newShares}
+          onChange={(e) => setNewShares(Math.max(1, parseInt(e.target.value) || 1))}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
+          className="bg-white border-slate-200"
+        />
+        <Button 
+          onClick={handleAddParticipant}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+        >
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Add
+        </Button>
       </div>
+
+      {/* Total Shares Summary */}
+      {participants.length > 0 && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-blue-800">
+                  Total: {participants.length} participants representing {totalShares} shares
+                </span>
+              </div>
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                {totalShares} people
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {participants.length === 0 ? (
         <Card className="bg-slate-50 border-dashed border-2 border-slate-300">
@@ -111,6 +186,8 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
           {participants.map((participant) => {
             const status = getParticipantStatus(participant);
             const StatusIcon = status.icon;
+            const shares = participant.shares || 1;
+            const isEditing = editingShares === participant.id;
             
             return (
               <Card key={participant.id} className="bg-white hover:shadow-md transition-shadow">
@@ -137,6 +214,53 @@ const ParticipantManager = ({ participants, onAddParticipant, onRemoveParticipan
                             <StatusIcon className="w-3 h-3" />
                             {status.label}
                           </Badge>
+                        </div>
+                        
+                        {/* Shares display/edit */}
+                        <div className="flex items-center gap-2 mt-2">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={tempShares}
+                                onChange={(e) => setTempShares(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-16 h-6 text-xs"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleSaveShares(participant.id)}
+                                className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancelEdit}
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {shares} {shares === 1 ? 'share' : 'shares'}
+                              </Badge>
+                              {onUpdateShares && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditShares(participant.id, shares)}
+                                  className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

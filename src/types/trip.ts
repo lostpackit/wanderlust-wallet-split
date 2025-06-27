@@ -25,6 +25,7 @@ export interface TripParticipant {
   userId: string;
   participantId: string;
   role: 'admin' | 'participant';
+  shares: number; // Number of shares this participant represents
   joinedAt: string;
 }
 

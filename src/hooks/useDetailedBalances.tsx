@@ -36,7 +36,7 @@ export const useDetailedBalances = () => {
       console.log('All trips from database:', allTrips?.length || 0);
 
       const allExpenses: { [tripId: string]: Expense[] } = {};
-      const allParticipants: { [tripId: string]: (Participant & { role: string })[] } = {};
+      const allParticipants: { [tripId: string]: (Participant & { role: string; shares: number })[] } = {};
       const userTrips: Trip[] = [];
 
       // Process each trip to see if user is involved
@@ -46,12 +46,13 @@ export const useDetailedBalances = () => {
         const isCreator = trip.created_by === user.id;
         console.log(`User is creator of ${trip.name}:`, isCreator);
         
-        // Get participants for this trip
+        // Get participants for this trip with shares
         const { data: tripParticipants, error: participantsError } = await supabase
           .from('trip_participants')
           .select(`
             participant_id,
             role,
+            shares,
             participants!fk_trip_participants_participant (
               id,
               name,
@@ -69,7 +70,7 @@ export const useDetailedBalances = () => {
 
         console.log(`Trip participants for ${trip.name}:`, tripParticipants);
 
-        const participants: (Participant & { role: string })[] = tripParticipants
+        const participants: (Participant & { role: string; shares: number })[] = tripParticipants
           ?.filter(tp => tp.participants !== null)
           .map(tp => ({
             id: (tp.participants as any).id,
@@ -78,6 +79,7 @@ export const useDetailedBalances = () => {
             avatar: (tp.participants as any).avatar,
             userId: (tp.participants as any).user_id,
             role: tp.role,
+            shares: tp.shares || 1,
           })) || [];
 
         console.log(`Processed participants for ${trip.name}:`, participants);

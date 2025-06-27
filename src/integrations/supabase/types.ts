@@ -176,6 +176,7 @@ export type Database = {
           joined_at: string
           participant_id: string
           role: string
+          shares: number
           trip_id: string
         }
         Insert: {
@@ -183,6 +184,7 @@ export type Database = {
           joined_at?: string
           participant_id: string
           role?: string
+          shares?: number
           trip_id: string
         }
         Update: {
@@ -190,6 +192,7 @@ export type Database = {
           joined_at?: string
           participant_id?: string
           role?: string
+          shares?: number
           trip_id?: string
         }
         Relationships: [

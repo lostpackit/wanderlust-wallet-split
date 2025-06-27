@@ -3,11 +3,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowRight, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowRight, DollarSign, TrendingUp, TrendingDown, Users } from "lucide-react";
 import { Participant, Expense } from "@/types/trip";
 
 interface BalanceViewProps {
-  participants: Participant[];
+  participants: (Participant & { shares?: number })[];
   expenses: Expense[];
 }
 
@@ -20,15 +20,30 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
       balances[p.id] = 0;
     });
 
+    // Calculate total shares for proper splitting
+    const totalShares = participants.reduce((sum, p) => sum + (p.shares || 1), 0);
+
     expenses.forEach(expense => {
-      const splitAmount = expense.amount / expense.splitBetween.length;
+      // Calculate shares-based split
+      const participantsInExpense = participants.filter(p => 
+        expense.splitBetween.includes(p.id)
+      );
+      
+      const totalSharesInExpense = participantsInExpense.reduce((sum, p) => 
+        sum + (p.shares || 1), 0
+      );
       
       // The person who paid gets credited
       balances[expense.paidBy] += expense.amount;
       
-      // Everyone who should split it gets debited
+      // Everyone who should split it gets debited based on their shares
       expense.splitBetween.forEach(participantId => {
-        balances[participantId] -= splitAmount;
+        const participant = participants.find(p => p.id === participantId);
+        if (participant && balances.hasOwnProperty(participantId)) {
+          const participantShares = participant.shares || 1;
+          const shareAmount = (expense.amount * participantShares) / totalSharesInExpense;
+          balances[participantId] -= shareAmount;
+        }
       });
     });
 
@@ -77,6 +92,10 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
     return participants.find(p => p.id === id)?.name || 'Unknown';
   };
 
+  const getParticipantShares = (id: string) => {
+    return participants.find(p => p.id === id)?.shares || 1;
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   };
@@ -84,6 +103,7 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
   const balances = calculateBalances();
   const settlements = calculateSettlements();
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalShares = participants.reduce((sum, p) => sum + (p.shares || 1), 0);
 
   if (participants.length === 0 || expenses.length === 0) {
     return (
@@ -100,7 +120,7 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
           <CardContent className="p-4 text-center">
             <DollarSign className="w-8 h-8 mx-auto mb-2" />
@@ -111,9 +131,17 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
         
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
           <CardContent className="p-4 text-center">
+            <Users className="w-8 h-8 mx-auto mb-2" />
+            <p className="text-sm opacity-90">Total Shares</p>
+            <p className="text-2xl font-bold">{totalShares}</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+          <CardContent className="p-4 text-center">
             <TrendingUp className="w-8 h-8 mx-auto mb-2" />
-            <p className="text-sm opacity-90">Per Person</p>
-            <p className="text-2xl font-bold">${(totalExpenses / participants.length).toFixed(2)}</p>
+            <p className="text-sm opacity-90">Per Share</p>
+            <p className="text-2xl font-bold">${(totalExpenses / totalShares).toFixed(2)}</p>
           </CardContent>
         </Card>
         
@@ -138,6 +166,7 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {participants.map(participant => {
               const balance = balances[participant.id];
+              const shares = participant.shares || 1;
               const isPositive = balance > 0.01;
               const isNegative = balance < -0.01;
               
@@ -149,7 +178,14 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
                         {getInitials(participant.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium text-slate-800">{participant.name}</span>
+                    <div>
+                      <span className="font-medium text-slate-800">{participant.name}</span>
+                      {shares > 1 && (
+                        <div className="text-xs text-slate-500">
+                          {shares} shares
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     {isPositive ? (
@@ -193,7 +229,14 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
                           {getInitials(getParticipantName(settlement.from))}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-slate-800">{getParticipantName(settlement.from)}</span>
+                      <div>
+                        <span className="font-medium text-slate-800">{getParticipantName(settlement.from)}</span>
+                        {getParticipantShares(settlement.from) > 1 && (
+                          <div className="text-xs text-slate-500">
+                            {getParticipantShares(settlement.from)} shares
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-slate-400" />
                     <div className="flex items-center gap-2">
@@ -202,7 +245,14 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
                           {getInitials(getParticipantName(settlement.to))}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-slate-800">{getParticipantName(settlement.to)}</span>
+                      <div>
+                        <span className="font-medium text-slate-800">{getParticipantName(settlement.to)}</span>
+                        {getParticipantShares(settlement.to) > 1 && (
+                          <div className="text-xs text-slate-500">
+                            {getParticipantShares(settlement.to)} shares
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

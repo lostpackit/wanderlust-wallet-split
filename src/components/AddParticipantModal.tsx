@@ -10,7 +10,7 @@ import UserSearchInput from "./UserSearchInput";
 import { UserProfile } from "@/hooks/useUserSearch";
 
 interface AddParticipantModalProps {
-  onAddParticipant: (participant: { name: string; email: string; userId?: string }) => void;
+  onAddParticipant: (participant: { name: string; email: string; userId?: string; shares?: number }) => void;
   isLoading: boolean;
 }
 
@@ -18,13 +18,19 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [shares, setShares] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && email.trim()) {
-      onAddParticipant({ name: name.trim(), email: email.trim() });
+    if (name.trim() && email.trim() && shares >= 1) {
+      onAddParticipant({ 
+        name: name.trim(), 
+        email: email.trim(), 
+        shares: shares 
+      });
       setName('');
       setEmail('');
+      setShares(1);
       setOpen(false);
     }
   };
@@ -34,7 +40,9 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
       name: user.full_name || user.email,
       email: user.email,
       userId: user.id,
+      shares: shares,
     });
+    setShares(1);
     setOpen(false);
   };
 
@@ -53,7 +61,7 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
             Add Participant
           </DialogTitle>
           <DialogDescription>
-            Search for existing users or add someone new to this trip.
+            Search for existing users or add someone new to this trip. Set how many shares they represent.
           </DialogDescription>
         </DialogHeader>
         
@@ -73,6 +81,20 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
             <div className="space-y-2">
               <Label>Find existing users</Label>
               <UserSearchInput onSelectUser={handleSelectUser} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="search-shares">Shares (people they represent)</Label>
+              <Input
+                id="search-shares"
+                type="number"
+                min="1"
+                value={shares}
+                onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
+                placeholder="Number of shares"
+              />
+              <p className="text-xs text-slate-500">
+                If they represent a family of 3, set this to 3
+              </p>
             </div>
           </TabsContent>
 
@@ -99,6 +121,20 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="participant-shares">Shares (people they represent)</Label>
+                <Input
+                  id="participant-shares"
+                  type="number"
+                  min="1"
+                  value={shares}
+                  onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
+                  placeholder="Number of shares"
+                />
+                <p className="text-xs text-slate-500">
+                  If they represent a family of 3, set this to 3
+                </p>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>

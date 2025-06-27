@@ -25,6 +25,7 @@ export const useParticipants = (tripId: string | null) => {
         .select(`
           participant_id,
           role,
+          shares,
           participants!fk_trip_participants_participant (
             id,
             name,
@@ -45,13 +46,14 @@ export const useParticipants = (tripId: string | null) => {
         .map(tp => ({
           ...(tp.participants as any),
           role: tp.role,
-        })) as (Participant & { role: string })[];
+          shares: tp.shares,
+        })) as (Participant & { role: string; shares: number })[];
     },
     enabled: !!tripId && !!user,
   });
 
   const addParticipantMutation = useMutation({
-    mutationFn: async ({ name, email, userId }: { name: string; email: string; userId?: string }) => {
+    mutationFn: async ({ name, email, userId, shares = 1 }: { name: string; email: string; userId?: string; shares?: number }) => {
       if (!tripId) {
         throw new Error('No trip selected');
       }
@@ -60,7 +62,7 @@ export const useParticipants = (tripId: string | null) => {
         throw new Error('User not authenticated');
       }
 
-      console.log('Adding participant:', { name, email, userId });
+      console.log('Adding participant:', { name, email, userId, shares });
 
       // First, create or get the participant
       const { data: existingParticipant, error: existingError } = await supabase
@@ -124,13 +126,14 @@ export const useParticipants = (tripId: string | null) => {
         throw new Error('Participant is already in this trip');
       }
 
-      // Add participant to trip
+      // Add participant to trip with shares
       const { data, error } = await supabase
         .from('trip_participants')
         .insert([{
           trip_id: tripId,
           participant_id: participantId,
-          role: 'participant'
+          role: 'participant',
+          shares: shares
         }])
         .select()
         .single();
@@ -190,6 +193,39 @@ export const useParticipants = (tripId: string | null) => {
     },
   });
 
+  const updateParticipantSharesMutation = useMutation({
+    mutationFn: async ({ participantId, shares }: { participantId: string; shares: number }) => {
+      if (!tripId) throw new Error('No trip selected');
+
+      const { error } = await supabase
+        .from('trip_participants')
+        .update({ shares })
+        .eq('trip_id', tripId)
+        .eq('participant_id', participantId);
+
+      if (error) {
+        console.error('Update shares error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      toast({
+        title: "Shares updated!",
+        description: "The participant's shares have been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Update shares mutation error:', error);
+      toast({
+        title: "Failed to update shares",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const removeParticipantMutation = useMutation({
     mutationFn: async (participantId: string) => {
       if (!tripId) throw new Error('No trip selected');
@@ -228,8 +264,10 @@ export const useParticipants = (tripId: string | null) => {
     participantsLoading,
     participantsError,
     addParticipant: addParticipantMutation.mutate,
+    updateParticipantShares: updateParticipantSharesMutation.mutate,
     removeParticipant: removeParticipantMutation.mutate,
     isAddingParticipant: addParticipantMutation.isPending,
+    isUpdatingShares: updateParticipantSharesMutation.isPending,
     isRemovingParticipant: removeParticipantMutation.isPending,
   };
 };

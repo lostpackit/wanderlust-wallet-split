@@ -20,7 +20,7 @@ export interface DetailedBalances {
 export const calculateDetailedBalances = (
   trips: Trip[],
   allExpenses: { [tripId: string]: Expense[] },
-  allParticipants: { [tripId: string]: (Participant & { role: string })[] },
+  allParticipants: { [tripId: string]: (Participant & { role: string; shares?: number })[] },
   currentUserId: string,
   currentUserEmail: string
 ): DetailedBalances => {
@@ -77,7 +77,7 @@ export const calculateDetailedBalances = (
 
     console.log(`Current user participant in ${trip.name}:`, currentUserParticipant);
 
-    // Calculate balances for this trip using the same logic as the original balance calculator
+    // Calculate balances for this trip using shares-based logic
     const balances: { [participantId: string]: number } = {};
     tripParticipants.forEach(p => {
       balances[p.id] = 0;
@@ -85,18 +85,29 @@ export const calculateDetailedBalances = (
 
     // Process each expense
     tripExpenses.forEach(expense => {
-      const splitAmount = expense.amount / expense.splitBetween.length;
-      console.log(`Processing expense ${expense.description}: $${expense.amount}, split ${splitAmount} between ${expense.splitBetween.length} people`);
+      // Calculate shares-based split
+      const participantsInExpense = tripParticipants.filter(p => 
+        expense.splitBetween.includes(p.id)
+      );
+      
+      const totalSharesInExpense = participantsInExpense.reduce((sum, p) => 
+        sum + (p.shares || 1), 0
+      );
+      
+      console.log(`Processing expense ${expense.description}: $${expense.amount}, total shares: ${totalSharesInExpense}`);
       
       // The person who paid gets credited
       if (balances.hasOwnProperty(expense.paidBy)) {
         balances[expense.paidBy] += expense.amount;
       }
       
-      // Everyone who should split it gets debited
+      // Everyone who should split it gets debited based on their shares
       expense.splitBetween.forEach(participantId => {
-        if (balances.hasOwnProperty(participantId)) {
-          balances[participantId] -= splitAmount;
+        const participant = tripParticipants.find(p => p.id === participantId);
+        if (participant && balances.hasOwnProperty(participantId)) {
+          const participantShares = participant.shares || 1;
+          const shareAmount = (expense.amount * participantShares) / totalSharesInExpense;
+          balances[participantId] -= shareAmount;
         }
       });
     });
