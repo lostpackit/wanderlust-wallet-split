@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,9 +21,11 @@ import { Trip } from "@/types/trip";
 import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useLocation } from "react-router-dom";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
+  const location = useLocation();
   const [view, setView] = useState<'dashboard' | 'trip'>('dashboard');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   
@@ -51,6 +54,17 @@ const Index = () => {
     isAddingExpense,
     isDeletingExpense,
   } = useExpenses(selectedTrip?.id || null);
+
+  // Handle navigation from balance breakdown page
+  useEffect(() => {
+    const state = location.state as { selectedTripId?: string } | null;
+    if (state?.selectedTripId && trips.length > 0) {
+      const trip = trips.find(t => t.id === state.selectedTripId);
+      if (trip) {
+        handleSelectTrip(trip);
+      }
+    }
+  }, [location.state, trips]);
 
   // Show loading screen while checking authentication
   if (authLoading) {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapIcon, DollarSignIcon, TrendingUpIcon, TrendingDownIcon, CalendarIcon } from "lucide-react";
 import { Trip, UserDashboardData, Expense } from "@/types/trip";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 interface UserDashboardProps {
   dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string })[] };
@@ -13,25 +14,38 @@ interface UserDashboardProps {
 }
 
 const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
+  const navigate = useNavigate();
   const { totalOwed, totalOwing, activeTrips, recentExpenses } = dashboardData;
+
+  const handleBalanceClick = () => {
+    navigate('/balance-breakdown');
+  };
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
+        <Card 
+          className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 cursor-pointer hover:from-green-600 hover:to-green-700 transition-all"
+          onClick={handleBalanceClick}
+        >
           <CardContent className="p-4 text-center">
             <TrendingUpIcon className="w-8 h-8 mx-auto mb-2" />
             <p className="text-sm opacity-90">You're Owed</p>
             <p className="text-2xl font-bold">${totalOwed.toFixed(2)}</p>
+            <p className="text-xs opacity-75 mt-1">Click for details</p>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0">
+        <Card 
+          className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 cursor-pointer hover:from-red-600 hover:to-red-700 transition-all"
+          onClick={handleBalanceClick}
+        >
           <CardContent className="p-4 text-center">
             <TrendingDownIcon className="w-8 h-8 mx-auto mb-2" />
             <p className="text-sm opacity-90">You Owe</p>
             <p className="text-2xl font-bold">${totalOwing.toFixed(2)}</p>
+            <p className="text-xs opacity-75 mt-1">Click for details</p>
           </CardContent>
         </Card>
         
