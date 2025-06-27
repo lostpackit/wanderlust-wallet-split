@@ -7,26 +7,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ArrowLeft, ChevronDown, ChevronRight, TrendingUp, TrendingDown, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDetailedBalances } from "@/hooks/useDetailedBalances";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Trip } from "@/types/trip";
 
-interface PersonBalance {
-  participantId: string;
-  participantName: string;
-  participantEmail: string;
-  totalAmount: number;
-  trips: {
-    trip: Trip;
-    amount: number;
-  }[];
-}
-
 const BalanceBreakdown = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { dashboardData, dashboardLoading } = useDashboardData();
+  const { detailedBalances, balancesLoading } = useDetailedBalances();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   const toggleSection = (sectionId: string) => {
@@ -39,69 +30,11 @@ const BalanceBreakdown = () => {
     setExpandedSections(newExpanded);
   };
 
-  const calculateDetailedBalances = () => {
-    if (!dashboardData || !user) return { owedByMe: [], owedToMe: [] };
-
-    const owedByMeMap = new Map<string, PersonBalance>();
-    const owedToMeMap = new Map<string, PersonBalance>();
-
-    // This is a simplified calculation - in a real app, you'd want to fetch detailed balance data
-    // For now, we'll create mock data based on the dashboard totals
-    dashboardData.activeTrips.forEach(trip => {
-      // Mock calculation - in reality, you'd calculate actual balances per person per trip
-      const mockPersons = [
-        { id: '1', name: 'John Doe', email: 'john@example.com' },
-        { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-      ];
-
-      mockPersons.forEach(person => {
-        const mockAmount = Math.random() * 100;
-        
-        if (Math.random() > 0.5) {
-          // I owe this person
-          if (!owedByMeMap.has(person.id)) {
-            owedByMeMap.set(person.id, {
-              participantId: person.id,
-              participantName: person.name,
-              participantEmail: person.email,
-              totalAmount: 0,
-              trips: []
-            });
-          }
-          const balance = owedByMeMap.get(person.id)!;
-          balance.totalAmount += mockAmount;
-          balance.trips.push({ trip, amount: mockAmount });
-        } else {
-          // This person owes me
-          if (!owedToMeMap.has(person.id)) {
-            owedToMeMap.set(person.id, {
-              participantId: person.id,
-              participantName: person.name,
-              participantEmail: person.email,
-              totalAmount: 0,
-              trips: []
-            });
-          }
-          const balance = owedToMeMap.get(person.id)!;
-          balance.totalAmount += mockAmount;
-          balance.trips.push({ trip, amount: mockAmount });
-        }
-      });
-    });
-
-    return {
-      owedByMe: Array.from(owedByMeMap.values()),
-      owedToMe: Array.from(owedToMeMap.values())
-    };
-  };
-
-  const { owedByMe, owedToMe } = calculateDetailedBalances();
-
   const handleTripClick = (trip: Trip) => {
     navigate('/', { state: { selectedTripId: trip.id } });
   };
 
-  if (dashboardLoading) {
+  if (dashboardLoading || balancesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100 flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -111,6 +44,9 @@ const BalanceBreakdown = () => {
       </div>
     );
   }
+
+  const owedByMe = detailedBalances?.owedByMe || [];
+  const owedToMe = detailedBalances?.owedToMe || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
