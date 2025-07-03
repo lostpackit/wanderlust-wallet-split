@@ -143,30 +143,98 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          created_at: string
+          description: string | null
+          from_user_id: string
+          id: string
+          initiated_by: string
+          payment_date: string | null
+          status: string
+          to_user_id: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          created_at?: string
+          description?: string | null
+          from_user_id: string
+          id?: string
+          initiated_by: string
+          payment_date?: string | null
+          status?: string
+          to_user_id: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          created_at?: string
+          description?: string | null
+          from_user_id?: string
+          id?: string
+          initiated_by?: string
+          payment_date?: string | null
+          status?: string
+          to_user_id?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          cashapp_tag: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
+          other_payment_info: string | null
+          paypal_email: string | null
           updated_at: string
+          venmo_username: string | null
+          zelle_number: string | null
         }
         Insert: {
           avatar_url?: string | null
+          cashapp_tag?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
+          other_payment_info?: string | null
+          paypal_email?: string | null
           updated_at?: string
+          venmo_username?: string | null
+          zelle_number?: string | null
         }
         Update: {
           avatar_url?: string | null
+          cashapp_tag?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
+          other_payment_info?: string | null
+          paypal_email?: string | null
           updated_at?: string
+          venmo_username?: string | null
+          zelle_number?: string | null
         }
         Relationships: []
       }

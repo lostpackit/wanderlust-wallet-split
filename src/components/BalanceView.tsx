@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowRight, DollarSign, TrendingUp, TrendingDown, Users } from "lucide-react";
 import { Participant, Expense } from "@/types/trip";
+import PaymentInfoModal from "./PaymentInfoModal";
 
 interface BalanceViewProps {
   participants: (Participant & { shares?: number })[];
   expenses: Expense[];
+  tripId: string;
 }
 
-const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
+const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
   const calculateBalances = () => {
     const balances: { [participantId: string]: number } = {};
     
@@ -257,9 +259,12 @@ const BalanceView = ({ participants, expenses }: BalanceViewProps) => {
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
                     <span className="font-bold text-lg text-slate-800">${settlement.amount.toFixed(2)}</span>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                      Pay Now
-                    </Button>
+                    <PaymentInfoModal
+                      recipientId={settlement.to}
+                      recipientName={getParticipantName(settlement.to)}
+                      amount={settlement.amount}
+                      tripId={tripId}
+                    />
                   </div>
                 </div>
               ))}

@@ -17,7 +17,7 @@ import { useTrips, useTripData } from "@/hooks/useTrips";
 import { useParticipants } from "@/hooks/useParticipants";
 import { useExpenses } from "@/hooks/useExpenses";
 import { Trip } from "@/types/trip";
-import { PlusCircle, Users, Receipt, Calculator, LogOut } from "lucide-react";
+import { PlusCircle, Users, Receipt, Calculator, LogOut, User } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useLocation } from "react-router-dom";
@@ -132,10 +132,16 @@ const Index = () => {
               </div>
               <CreateTripModal onCreateTrip={handleCreateTrip} />
             </div>
-            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Profile
+              </Button>
+              <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+            </div>
           </div>
           
           {dashboardLoading ? (
@@ -297,6 +303,7 @@ const Index = () => {
                     <BalanceView 
                       participants={realParticipants}
                       expenses={realExpenses}
+                      tripId={selectedTrip.id}
                     />
                   </CardContent>
                 </Card>
