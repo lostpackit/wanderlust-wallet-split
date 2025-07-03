@@ -51,6 +51,10 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
         return `https://venmo.com/${value.replace('@', '')}`;
       case 'cashapp':
         return `https://cash.app/${value.replace('$', '')}`;
+      case 'paypal':
+        return `https://www.paypal.com/paypalme/${value}`;
+      case 'zelle':
+        return `https://www.zellepay.com/`;
       default:
         return null;
     }
@@ -132,6 +136,15 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                     <Badge variant="secondary" className="mb-1">PayPal</Badge>
                     <p className="text-sm">{paymentMethods.paypal_email}</p>
                   </div>
+                  {getPaymentLink('paypal', paymentMethods.paypal_email) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(getPaymentLink('paypal', paymentMethods.paypal_email)!, '_blank')}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -142,6 +155,15 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                     <Badge variant="secondary" className="mb-1">Zelle</Badge>
                     <p className="text-sm">{paymentMethods.zelle_number}</p>
                   </div>
+                  {getPaymentLink('zelle', paymentMethods.zelle_number) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(getPaymentLink('zelle', paymentMethods.zelle_number)!, '_blank')}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -164,6 +186,14 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                 </div>
               )}
 
+              {/* IBAN */}
+              {paymentMethods.iban && (
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <Badge variant="secondary" className="mb-1">IBAN</Badge>
+                  <p className="text-sm font-mono">{paymentMethods.iban}</p>
+                </div>
+              )}
+
               {/* Other Payment Info */}
               {paymentMethods.other_payment_info && (
                 <div className="p-3 bg-slate-50 rounded-lg">
@@ -177,6 +207,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                !paymentMethods.paypal_email && 
                !paymentMethods.zelle_number && 
                !paymentMethods.cashapp_tag && 
+               !paymentMethods.iban && 
                !paymentMethods.other_payment_info && (
                 <div className="text-center py-4 text-slate-500">
                   No payment methods available. Contact {recipientName} directly.
