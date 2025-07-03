@@ -74,30 +74,11 @@ export const useProfile = () => {
     },
   });
 
-  // Hook to get payment methods for a specific user
-  const useUserPaymentMethods = (userId: string) => {
-    return useQuery({
-      queryKey: ['payment-methods', userId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('venmo_username, paypal_email, zelle_number, cashapp_tag, iban, other_payment_info, full_name, email')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (error) throw error;
-        return data;
-      },
-      enabled: !!userId,
-    });
-  };
-
   return {
     profile,
     isLoading,
     error,
     updateProfile: updateProfileMutation.mutate,
     isUpdatingProfile: updateProfileMutation.isPending,
-    useUserPaymentMethods,
   };
 };

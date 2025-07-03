@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, DollarSign, CheckCircle, Clock, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/useProfile";
+import { useUserPaymentMethods } from "@/hooks/useUserPaymentMethods";
 import { usePayments } from "@/hooks/usePayments";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -20,7 +21,6 @@ interface PaymentInfoModalProps {
 
 const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: PaymentInfoModalProps) => {
   const { user } = useAuth();
-  const { useUserPaymentMethods } = useProfile();
   const { createPayment, isCreatingPayment } = usePayments(tripId);
   const { data: paymentMethods, isLoading } = useUserPaymentMethods(recipientId);
   const [customAmount, setCustomAmount] = useState(amount);
