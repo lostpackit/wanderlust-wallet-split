@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, DollarSign, CheckCircle, Clock } from "lucide-react";
+import { ExternalLink, DollarSign, CheckCircle, Clock, Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/useProfile";
 import { usePayments } from "@/hooks/usePayments";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +25,15 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
   const { data: paymentMethods, isLoading } = useUserPaymentMethods(recipientId);
   const [customAmount, setCustomAmount] = useState(amount);
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied to clipboard",
+      description: "IBAN number copied successfully.",
+    });
+  };
 
   const handleMarkAsPaid = () => {
     createPayment({
@@ -186,13 +196,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                 </div>
               )}
 
-              {/* IBAN */}
-              {paymentMethods.iban && (
-                <div className="p-3 bg-slate-50 rounded-lg">
-                  <Badge variant="secondary" className="mb-1">IBAN</Badge>
-                  <p className="text-sm font-mono">{paymentMethods.iban}</p>
-                </div>
-              )}
+              {/* IBAN - Will be available after running the migration */}
 
               {/* Other Payment Info */}
               {paymentMethods.other_payment_info && (
@@ -207,7 +211,6 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                !paymentMethods.paypal_email && 
                !paymentMethods.zelle_number && 
                !paymentMethods.cashapp_tag && 
-               !paymentMethods.iban && 
                !paymentMethods.other_payment_info && (
                 <div className="text-center py-4 text-slate-500">
                   No payment methods available. Contact {recipientName} directly.

@@ -22,6 +22,7 @@ const Profile = () => {
     paypal_email: '',
     zelle_number: '',
     cashapp_tag: '',
+    iban: '',
     other_payment_info: '',
   });
 
@@ -33,6 +34,7 @@ const Profile = () => {
         paypal_email: profile.paypal_email || '',
         zelle_number: profile.zelle_number || '',
         cashapp_tag: profile.cashapp_tag || '',
+        iban: profile.iban || '',
         other_payment_info: profile.other_payment_info || '',
       });
     }
@@ -164,6 +166,16 @@ const Profile = () => {
                       placeholder="$cashtag"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="iban">IBAN (International Bank Account Number)</Label>
+                  <Input
+                    id="iban"
+                    value={formData.iban}
+                    onChange={(e) => handleInputChange('iban', e.target.value)}
+                    placeholder="GB82 WEST 1234 5698 7654 32"
+                    className="font-mono"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="other_payment_info">Other Payment Information</Label>
