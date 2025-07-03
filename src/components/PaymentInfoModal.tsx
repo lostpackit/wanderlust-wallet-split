@@ -196,7 +196,25 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                 </div>
               )}
 
-              {/* IBAN - Will be available after running the migration */}
+              {/* IBAN */}
+              {paymentMethods.iban && (
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <Badge variant="secondary" className="mb-1">IBAN</Badge>
+                    <p className="text-sm font-mono">{paymentMethods.iban}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(paymentMethods.iban!)}
+                    className="flex items-center gap-1"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Other Payment Info */}
 
               {/* Other Payment Info */}
               {paymentMethods.other_payment_info && (
@@ -211,6 +229,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                !paymentMethods.paypal_email && 
                !paymentMethods.zelle_number && 
                !paymentMethods.cashapp_tag && 
+               !paymentMethods.iban && 
                !paymentMethods.other_payment_info && (
                 <div className="text-center py-4 text-slate-500">
                   No payment methods available. Contact {recipientName} directly.

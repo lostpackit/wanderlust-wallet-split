@@ -203,6 +203,7 @@ export type Database = {
           created_at: string
           email: string
           full_name: string | null
+          iban: string | null
           id: string
           other_payment_info: string | null
           paypal_email: string | null
@@ -216,6 +217,7 @@ export type Database = {
           created_at?: string
           email: string
           full_name?: string | null
+          iban?: string | null
           id: string
           other_payment_info?: string | null
           paypal_email?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           created_at?: string
           email?: string
           full_name?: string | null
+          iban?: string | null
           id?: string
           other_payment_info?: string | null
           paypal_email?: string | null

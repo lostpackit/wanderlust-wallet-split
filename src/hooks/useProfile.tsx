@@ -81,7 +81,7 @@ export const useProfile = () => {
       queryFn: async () => {
         const { data, error } = await supabase
           .from('profiles')
-          .select('venmo_username, paypal_email, zelle_number, cashapp_tag, other_payment_info, full_name, email')
+          .select('venmo_username, paypal_email, zelle_number, cashapp_tag, iban, other_payment_info, full_name, email')
           .eq('id', userId)
           .maybeSingle();
 
