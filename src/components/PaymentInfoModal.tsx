@@ -238,7 +238,9 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
             </div>
           ) : (
             <div className="text-center py-4 text-slate-500">
-              Unable to load payment methods.
+              <p className="mb-2">Unable to load payment methods.</p>
+              <p className="text-xs">This participant may not have a linked account or payment methods set up.</p>
+              <p className="text-xs mt-1">Contact {recipientName} directly at their email address.</p>
             </div>
           )}
 

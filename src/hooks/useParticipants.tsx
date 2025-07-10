@@ -64,6 +64,21 @@ export const useParticipants = (tripId: string | null) => {
 
       console.log('Adding participant:', { name, email, userId, shares });
 
+      // If no userId is provided, try to find an existing user with this email
+      let resolvedUserId = userId;
+      if (!resolvedUserId) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        
+        if (existingProfile) {
+          resolvedUserId = existingProfile.id;
+          console.log('Found existing user for email:', email, 'with ID:', resolvedUserId);
+        }
+      }
+
       // First, create or get the participant
       const { data: existingParticipant, error: existingError } = await supabase
         .from('participants')
@@ -81,11 +96,11 @@ export const useParticipants = (tripId: string | null) => {
         console.log('Using existing participant:', existingParticipant.id);
         participantId = existingParticipant.id;
         
-        // Update the participant record with user_id if provided and not already set
-        if (userId && !existingParticipant.user_id) {
+        // Update the participant record with user_id if resolved and not already set
+        if (resolvedUserId && !existingParticipant.user_id) {
           const { error: updateError } = await supabase
             .from('participants')
-            .update({ user_id: userId })
+            .update({ user_id: resolvedUserId })
             .eq('id', existingParticipant.id);
           
           if (updateError) {
@@ -99,7 +114,7 @@ export const useParticipants = (tripId: string | null) => {
           .insert([{ 
             name, 
             email,
-            user_id: userId || null
+            user_id: resolvedUserId || null
           }])
           .select()
           .single();
@@ -143,8 +158,8 @@ export const useParticipants = (tripId: string | null) => {
       }
 
       // If the participant has a user_id, create a notification
-      if (userId) {
-        console.log('Creating notification for user:', userId);
+      if (resolvedUserId) {
+        console.log('Creating notification for user:', resolvedUserId);
         
         // Get trip name for notification
         const { data: tripData } = await supabase
@@ -158,7 +173,7 @@ export const useParticipants = (tripId: string | null) => {
         const { error: notificationError } = await supabase
           .from('notifications')
           .insert([{
-            user_id: userId,
+            user_id: resolvedUserId,
             title: 'Added to Trip',
             message: `You've been added to "${tripName}" by ${user.email}`,
             data: {
