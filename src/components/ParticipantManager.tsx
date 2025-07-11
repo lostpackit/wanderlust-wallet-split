@@ -14,13 +14,15 @@ interface ParticipantManagerProps {
   onAddParticipant: (participant: { name: string; email: string; shares?: number }) => void;
   onRemoveParticipant: (id: string) => void;
   onUpdateShares?: (participantId: string, shares: number) => void;
+  hideAddForm?: boolean;
 }
 
 const ParticipantManager = ({ 
   participants, 
   onAddParticipant, 
   onRemoveParticipant,
-  onUpdateShares 
+  onUpdateShares,
+  hideAddForm = false
 }: ParticipantManagerProps) => {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -119,40 +121,42 @@ const ParticipantManager = ({
 
   return (
     <div className="space-y-6">
-      {/* Add Participant Form */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Input
-          placeholder="Enter name"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
-          className="bg-white border-slate-200"
-        />
-        <Input
-          placeholder="Email"
-          type="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
-          className="bg-white border-slate-200"
-        />
-        <Input
-          placeholder="Shares"
-          type="number"
-          min="1"
-          value={newShares}
-          onChange={(e) => setNewShares(Math.max(1, parseInt(e.target.value) || 1))}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
-          className="bg-white border-slate-200"
-        />
-        <Button 
-          onClick={handleAddParticipant}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-        >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Add
-        </Button>
-      </div>
+      {/* Add Participant Form - only show if not hidden */}
+      {!hideAddForm && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Input
+            placeholder="Enter name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
+            className="bg-white border-slate-200"
+          />
+          <Input
+            placeholder="Email"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
+            className="bg-white border-slate-200"
+          />
+          <Input
+            placeholder="Shares"
+            type="number"
+            min="1"
+            value={newShares}
+            onChange={(e) => setNewShares(Math.max(1, parseInt(e.target.value) || 1))}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant()}
+            className="bg-white border-slate-200"
+          />
+          <Button 
+            onClick={handleAddParticipant}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Add
+          </Button>
+        </div>
+      )}
 
       {/* Total Shares Summary */}
       {participants.length > 0 && (

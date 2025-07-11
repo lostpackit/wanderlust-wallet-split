@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, PlusCircle } from "lucide-react";
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -294,12 +294,20 @@ const TripDetail = () => {
           </TabsContent>
 
           {/* Participants Tab */}
-          <TabsContent value="participants">
+          <TabsContent value="participants" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Manage Participants</h3>
+              <AddParticipantModal
+                onAddParticipant={handleAddParticipant}
+                isLoading={isAddingParticipant}
+              />
+            </div>
             <ParticipantManager
               participants={participants}
               onAddParticipant={handleAddParticipant}
               onRemoveParticipant={handleRemoveParticipant}
               onUpdateShares={handleUpdateShares}
+              hideAddForm={true}
             />
           </TabsContent>
 
