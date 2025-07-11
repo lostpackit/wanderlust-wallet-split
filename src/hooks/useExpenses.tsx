@@ -46,25 +46,58 @@ export const useExpenses = (tripId: string | null) => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
-      // Session validation before database operations
+      // Step 1: Session validation before database operations
       if (!session || !user) {
         throw new Error('User not authenticated or session expired');
       }
 
-      console.log('Adding expense with user:', user?.id);
+      console.log('Starting expense creation...');
+      console.log('User ID:', user?.id);
       console.log('Session exists:', !!session);
       console.log('Session access token exists:', !!session.access_token);
-      console.log('Expense data:', expenseData);
+
+      // Step 2: Force session refresh to ensure valid JWT token
+      try {
+        console.log('Refreshing session...');
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) {
+          console.error('Session refresh failed:', refreshError);
+          throw new Error('Failed to refresh authentication session');
+        }
+        
+        console.log('Session refreshed successfully');
+        console.log('Refreshed session user:', refreshData.session?.user?.id);
+      } catch (refreshErr) {
+        console.error('Session refresh error:', refreshErr);
+        // Continue anyway, the session might still be valid
+      }
+
+      // Step 3: Verify session state before proceeding
+      const currentSession = await supabase.auth.getSession();
+      if (!currentSession.data.session) {
+        throw new Error('No valid session found after refresh');
+      }
+
+      console.log('Current session user after refresh:', currentSession.data.session.user.id);
+
+      // Step 4: Log authentication state for debugging
+      console.log('Authentication state verified:', {
+        hasAccessToken: !!currentSession.data.session.access_token,
+        userIdFromSession: currentSession.data.session.user.id,
+        tokenPreview: currentSession.data.session.access_token.substring(0, 20) + '...'
+      });
 
       // Attempt expense creation with retry logic
       let attempt = 0;
-      const maxAttempts = 2;
+      const maxAttempts = 3;
       
       while (attempt < maxAttempts) {
         attempt++;
         console.log(`Expense creation attempt ${attempt}/${maxAttempts}`);
         
         try {
+          // Use the refreshed session's supabase client
           const { data, error } = await supabase
             .from('expenses')
             .insert([{
@@ -82,11 +115,27 @@ export const useExpenses = (tripId: string | null) => {
 
           if (error) {
             console.error(`Attempt ${attempt} failed:`, error);
+            console.error('Error details:', {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            
+            // If it's an RLS error and we have attempts left, try refreshing auth again
+            if (error.message.includes('row-level security') && attempt < maxAttempts) {
+              console.log('RLS error detected, attempting auth refresh...');
+              await supabase.auth.refreshSession();
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            }
+            
             if (attempt === maxAttempts) {
               throw error;
             }
-            // Wait a bit before retry
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             continue;
           }
 
@@ -97,6 +146,8 @@ export const useExpenses = (tripId: string | null) => {
           if (attempt === maxAttempts) {
             throw err;
           }
+          // Wait before retry with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
       }
 
