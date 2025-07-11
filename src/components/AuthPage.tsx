@@ -98,10 +98,10 @@ const AuthPage = () => {
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-slate-800">
-            Trip Expense Manager
+            Wanderlust Wallet
           </CardTitle>
           <CardDescription>
-            Sign in to manage your travel expenses
+            Sign in to manage your travel expenses and split bills with friends
           </CardDescription>
         </CardHeader>
         <CardContent>
