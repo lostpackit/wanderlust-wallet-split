@@ -4,6 +4,8 @@ import { LandingPage } from "@/components/LandingPage";
 import AuthPage from "@/components/AuthPage";
 import UserDashboard from "@/components/UserDashboard";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useTrips } from "@/hooks/useTrips";
+import CreateTripModal from "@/components/CreateTripModal";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 
@@ -11,6 +13,7 @@ const Index = () => {
   const { user, loading } = useAuth();
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
   const dashboardData = useDashboardData();
+  const { createTrip } = useTrips();
 
   console.log('Index: Current state:', { 
     userExists: !!user, 
@@ -59,6 +62,7 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <CreateTripModal onCreateTrip={createTrip} />
             <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2">
               <User className="w-4 h-4" />
               Profile
