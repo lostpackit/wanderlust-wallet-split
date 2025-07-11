@@ -41,6 +41,46 @@ export const useTrips = () => {
     enabled: !!user,
   });
 
+  const updateTripMutation = useMutation({
+    mutationFn: async (tripData: Partial<Trip> & { id: string }) => {
+      const { id, ...updateData } = tripData;
+      
+      const dbData = {
+        ...(updateData.name && { name: updateData.name }),
+        ...(updateData.description && { description: updateData.description }),
+        ...(updateData.startDate && { start_date: updateData.startDate }),
+        ...(updateData.endDate && { end_date: updateData.endDate }),
+        ...(updateData.settlementDeadline && { settlement_deadline: updateData.settlementDeadline }),
+      };
+
+      const { data, error } = await supabase
+        .from('trips')
+        .update(dbData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['tripData'] });
+      toast({
+        title: "Success",
+        description: "Trip updated successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Update trip error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update trip",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createTripMutation = useMutation({
     mutationFn: async (tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
       if (!user) throw new Error('User not authenticated');
@@ -213,6 +253,8 @@ export const useTrips = () => {
     tripsError,
     createTrip: createTripMutation.mutate,
     isCreatingTrip: createTripMutation.isPending,
+    updateTrip: updateTripMutation.mutate,
+    isUpdatingTrip: updateTripMutation.isPending,
     deleteTrip: deleteTripMutation.mutate,
     isDeletingTrip: deleteTripMutation.isPending,
   };
@@ -242,10 +284,10 @@ export const useTripData = (tripId: string | null) => {
         throw tripError;
       }
 
-      // Get trip participants - using separate queries to avoid relationship ambiguity
+      // Get trip participants with shares - using separate queries to avoid relationship ambiguity
       const { data: tripParticipants, error: tpError } = await supabase
         .from('trip_participants')
-        .select('participant_id, role')
+        .select('participant_id, role, shares')
         .eq('trip_id', tripId);
 
       if (tpError) {
@@ -286,6 +328,7 @@ export const useTripData = (tripId: string | null) => {
         return participant ? {
           ...participant,
           role: tp.role,
+          shares: tp.shares || 1,
         } : null;
       }).filter(Boolean);
 

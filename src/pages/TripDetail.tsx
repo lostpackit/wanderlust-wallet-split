@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Users, DollarSign, Plus, UserPlus, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2 } from "lucide-react";
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useParticipants } from "@/hooks/useParticipants";
+import { useExpenses } from "@/hooks/useExpenses";
 import { format } from "date-fns";
 import {
   AlertDialog,
@@ -20,22 +23,36 @@ import {
 } from "@/components/ui/alert-dialog";
 import AddParticipantModal from "@/components/AddParticipantModal";
 import AddExpenseModal from "@/components/AddExpenseModal";
-import { useParticipants } from "@/hooks/useParticipants";
-import { useExpenses } from "@/hooks/useExpenses";
-import { useState } from "react";
+import TripHeader from "@/components/TripHeader";
+import ParticipantManager from "@/components/ParticipantManager";
+import ExpensesList from "@/components/ExpensesList";
+import BalanceView from "@/components/BalanceView";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { trip, participants, expenses, tripLoading, participantsLoading, expensesLoading } = useTripData(tripId!);
-  const { deleteTrip, isDeletingTrip } = useTrips();
+  const { deleteTrip, isDeletingTrip, updateTrip } = useTrips();
   const { createNotification } = useNotifications();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   
   // Use the dedicated hooks for mutations
-  const { addParticipant, isAddingParticipant } = useParticipants(tripId);
-  const { addExpense, isAddingExpense } = useExpenses(tripId);
+  const { 
+    addParticipant, 
+    isAddingParticipant, 
+    updateParticipantShares, 
+    removeParticipant,
+    isUpdatingShares,
+    isRemovingParticipant 
+  } = useParticipants(tripId);
+  const { 
+    addExpense, 
+    isAddingExpense, 
+    deleteExpense, 
+    isDeletingExpense 
+  } = useExpenses(tripId);
 
   const isCreator = trip && user && trip.createdBy === user.id;
 
@@ -82,6 +99,35 @@ const TripDetail = () => {
     setIsDeleteDialogOpen(false);
   };
 
+  const handleTripNameChange = (name: string) => {
+    if (trip && isCreator) {
+      updateTrip({ 
+        id: trip.id, 
+        name 
+      });
+    }
+  };
+
+  const handleAddParticipant = (participantData: { name: string; email: string; shares?: number }) => {
+    addParticipant(participantData);
+  };
+
+  const handleUpdateShares = (participantId: string, shares: number) => {
+    updateParticipantShares({ participantId, shares });
+  };
+
+  const handleRemoveParticipant = (participantId: string) => {
+    removeParticipant(participantId);
+  };
+
+  const handleDeleteExpense = (expenseId: string) => {
+    deleteExpense(expenseId);
+  };
+
+  // Calculate totals for display
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalShares = participants.reduce((sum, p) => sum + ((p as any).shares || 1), 0);
+
   if (tripLoading || participantsLoading || expensesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -125,11 +171,13 @@ const TripDetail = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <Button 
               variant="outline" 
               onClick={() => navigate('/')}
+              className="bg-white/80 backdrop-blur-sm border-0 shadow-md hover:shadow-lg"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
@@ -137,7 +185,7 @@ const TripDetail = () => {
             
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
+                <Button variant="destructive" size="sm" className="shadow-md">
                   <Trash2 className="w-4 h-4 mr-2" />
                   {isCreator ? 'Delete Trip' : 'Request Deletion'}
                 </Button>
@@ -167,87 +215,122 @@ const TripDetail = () => {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-          
+
+          {/* Trip Header */}
           {trip && (
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-slate-800 mb-2">{trip.name}</h1>
-              {trip.description && (
-                <p className="text-slate-600 mb-4">{trip.description}</p>
-              )}
-              <div className="flex items-center gap-4 text-sm text-slate-500">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {format(new Date(trip.startDate), "MMM d")} - {format(new Date(trip.endDate), "MMM d, yyyy")}
-                </div>
-              </div>
-            </div>
+            <TripHeader
+              tripName={trip.name}
+              onTripNameChange={handleTripNameChange}
+              participantCount={participants.length}
+              totalExpenses={totalExpenses}
+            />
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Participants */}
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-slate-800">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  Participants ({participants.length})
-                </CardTitle>
-                <AddParticipantModal onAddParticipant={addParticipant} isLoading={isAddingParticipant} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {participants.map((participant) => (
-                  <div key={participant.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm border-0 shadow-md">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="participants" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Participants
+            </TabsTrigger>
+            <TabsTrigger value="expenses" className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" />
+              Expenses
+            </TabsTrigger>
+            <TabsTrigger value="balances" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Balances
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {trip && (
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    Trip Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {trip.description && (
                     <div>
-                      <p className="font-medium text-slate-800">{participant.name}</p>
-                      <p className="text-sm text-slate-500">{participant.email}</p>
+                      <h3 className="font-semibold text-slate-700 mb-2">Description</h3>
+                      <p className="text-slate-600">{trip.description}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-semibold text-slate-700 mb-2">Dates</h3>
+                    <p className="text-slate-600">
+                      {format(new Date(trip.startDate), "MMMM d, yyyy")} - {format(new Date(trip.endDate), "MMMM d, yyyy")}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-slate-800">{participants.length}</div>
+                      <div className="text-sm text-slate-600">Participants</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-slate-800">${totalExpenses.toFixed(2)}</div>
+                      <div className="text-sm text-slate-600">Total Expenses</div>
+                    </div>
+                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <Receipt className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-slate-800">{expenses.length}</div>
+                      <div className="text-sm text-slate-600">Expenses</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-          {/* Expenses */}
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-slate-800">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  Expenses ({expenses.length})
-                </CardTitle>
-                <AddExpenseModal tripId={tripId!} participants={participants} onAddExpense={addExpense} isLoading={isAddingExpense} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {expenses.length === 0 ? (
-                <div className="text-center py-8">
-                  <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-500">No expenses yet</p>
-                  <p className="text-sm text-slate-400 mt-2">Add expenses to track trip costs</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {expenses.map((expense) => (
-                    <div key={expense.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium text-slate-800">{expense.description}</p>
-                        <p className="text-sm text-slate-500">
-                          {format(new Date(expense.date), "MMM d, yyyy")} • {expense.category}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-800">${expense.amount.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          {/* Participants Tab */}
+          <TabsContent value="participants">
+            <ParticipantManager
+              participants={participants}
+              onAddParticipant={handleAddParticipant}
+              onRemoveParticipant={handleRemoveParticipant}
+              onUpdateShares={handleUpdateShares}
+            />
+          </TabsContent>
+
+          {/* Expenses Tab */}
+          <TabsContent value="expenses" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-slate-800">Expenses</h2>
+              <AddExpenseModal 
+                tripId={tripId!} 
+                participants={participants} 
+                onAddExpense={addExpense} 
+                isLoading={isAddingExpense} 
+              />
+            </div>
+            <ExpensesList
+              expenses={expenses}
+              participants={participants}
+              onDeleteExpense={handleDeleteExpense}
+              isDeleting={isDeletingExpense}
+            />
+          </TabsContent>
+
+          {/* Balances Tab */}
+          <TabsContent value="balances">
+            <BalanceView
+              participants={participants}
+              expenses={expenses}
+              tripId={tripId!}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

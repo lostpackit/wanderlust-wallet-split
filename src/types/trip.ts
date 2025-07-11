@@ -7,6 +7,11 @@ export interface Participant {
   userId?: string; // Link to authenticated user
 }
 
+export interface ParticipantWithShares extends Participant {
+  role: string;
+  shares: number;
+}
+
 export interface Trip {
   id: string;
   name: string;
