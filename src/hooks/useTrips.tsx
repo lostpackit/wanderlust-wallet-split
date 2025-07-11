@@ -159,12 +159,62 @@ export const useTrips = () => {
     },
   });
 
+  const deleteTripMutation = useMutation({
+    mutationFn: async (tripId: string) => {
+      if (!user) throw new Error('User not authenticated');
+
+      // Check if user is the creator of the trip
+      const { data: trip, error: tripError } = await supabase
+        .from('trips')
+        .select('created_by')
+        .eq('id', tripId)
+        .single();
+
+      if (tripError) throw tripError;
+
+      if (trip.created_by !== user.id) {
+        throw new Error('Only trip creators can delete trips');
+      }
+
+      // Delete the trip (cascades will handle related records)
+      const { error: deleteError } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
+
+      if (deleteError) throw deleteError;
+
+      return tripId;
+    },
+    onSuccess: (tripId) => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
+      
+      toast({
+        title: "Trip deleted",
+        description: "The trip has been successfully deleted.",
+      });
+    },
+    onError: (error) => {
+      console.error('Trip deletion failed:', error);
+      toast({
+        title: "Failed to delete trip",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     trips,
     tripsLoading,
     tripsError,
     createTrip: createTripMutation.mutate,
     isCreatingTrip: createTripMutation.isPending,
+    deleteTrip: deleteTripMutation.mutate,
+    isDeletingTrip: deleteTripMutation.isPending,
   };
 };
 
@@ -278,9 +328,43 @@ export const useTripData = (tripId: string | null) => {
     enabled: !!tripId && !!user,
   });
 
+  // Add trip data to the response so we can check creator
+  const {
+    data: trip,
+    isLoading: tripLoading,
+  } = useQuery({
+    queryKey: ['trip', tripId],
+    queryFn: async () => {
+      if (!tripId) return null;
+      
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        settlementDeadline: data.settlement_deadline,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    },
+    enabled: !!tripId,
+  });
+
   return {
+    trip,
     participants,
     expenses,
+    tripLoading,
     participantsLoading,
     expensesLoading,
   };

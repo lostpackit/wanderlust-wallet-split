@@ -2,31 +2,87 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Users, DollarSign, Plus, UserPlus } from "lucide-react";
-import { useTripData } from "@/hooks/useTrips";
+import { ArrowLeft, Calendar, Users, DollarSign, Plus, UserPlus, Trash2 } from "lucide-react";
+import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import AddParticipantModal from "@/components/AddParticipantModal";
 import AddExpenseModal from "@/components/AddExpenseModal";
 import { useParticipants } from "@/hooks/useParticipants";
 import { useExpenses } from "@/hooks/useExpenses";
+import { useState } from "react";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { participants, expenses, participantsLoading, expensesLoading } = useTripData(tripId!);
+  const { trip, participants, expenses, tripLoading, participantsLoading, expensesLoading } = useTripData(tripId!);
+  const { deleteTrip, isDeletingTrip } = useTrips();
+  const { createNotification } = useNotifications();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Use the dedicated hooks for mutations
   const { addParticipant, isAddingParticipant } = useParticipants(tripId);
   const { addExpense, isAddingExpense } = useExpenses(tripId);
+
+  const isCreator = trip && user && trip.createdBy === user.id;
 
   console.log('TripDetail - tripId:', tripId);
   console.log('TripDetail - participants:', participants);
   console.log('TripDetail - expenses:', expenses);
   console.log('TripDetail - loading states:', { participantsLoading, expensesLoading });
 
-  if (participantsLoading || expensesLoading) {
+  const handleDeleteTrip = () => {
+    if (!tripId) return;
+    
+    if (isCreator) {
+      // Creator can delete directly
+      deleteTrip(tripId, {
+        onSuccess: () => {
+          navigate('/');
+        }
+      });
+    } else {
+      // Non-creator requests deletion
+      if (trip && user) {
+        const requesterName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'A participant';
+        createNotification({
+          userId: trip.createdBy,
+          title: "Trip Deletion Request",
+          message: `${requesterName} has requested to delete the trip "${trip.name}"`,
+          data: {
+            type: 'trip_deletion_request',
+            tripId: tripId,
+            requesterId: user.id,
+            requesterName: requesterName,
+            tripName: trip.name
+          }
+        });
+        
+        // Show success message to requester
+        navigate('/', { 
+          state: { 
+            message: "Deletion request sent to trip creator" 
+          }
+        });
+      }
+    }
+    setIsDeleteDialogOpen(false);
+  };
+
+  if (tripLoading || participantsLoading || expensesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -70,14 +126,62 @@ const TripDetail = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="mb-6">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/')}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/')}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {isCreator ? 'Delete Trip' : 'Request Deletion'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {isCreator ? 'Delete Trip' : 'Request Trip Deletion'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isCreator 
+                      ? `Are you sure you want to delete "${trip?.name}"? This will permanently remove all participants, expenses, and data associated with this trip. This action cannot be undone.`
+                      : `Are you sure you want to request deletion of "${trip?.name}"? The trip creator will be notified of your request and can choose to delete the trip.`
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteTrip}
+                    disabled={isDeletingTrip}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeletingTrip ? 'Processing...' : (isCreator ? 'Delete Trip' : 'Send Request')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          
+          {trip && (
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">{trip.name}</h1>
+              {trip.description && (
+                <p className="text-slate-600 mb-4">{trip.description}</p>
+              )}
+              <div className="flex items-center gap-4 text-sm text-slate-500">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {format(new Date(trip.startDate), "MMM d")} - {format(new Date(trip.endDate), "MMM d, yyyy")}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
