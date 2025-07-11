@@ -8,7 +8,7 @@ import { Participant, Expense } from "@/types/trip";
 import PaymentInfoModal from "./PaymentInfoModal";
 
 interface BalanceViewProps {
-  participants: (Participant & { shares?: number })[];
+  participants: (Participant & { shares?: number; additional_amount?: number })[];
   expenses: Expense[];
   tripId: string;
 }
@@ -24,9 +24,10 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
 
     // Calculate total shares for proper splitting
     const totalShares = participants.reduce((sum, p) => sum + (p.shares || 1), 0);
+    const totalAdditionalAmounts = participants.reduce((sum, p) => sum + (p.additional_amount || 0), 0);
 
     expenses.forEach(expense => {
-      // Calculate shares-based split
+      // Calculate shares-based split with additional amounts consideration
       const participantsInExpense = participants.filter(p => 
         expense.splitBetween.includes(p.id)
       );
@@ -35,16 +36,24 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
         sum + (p.shares || 1), 0
       );
       
+      const additionalAmountsInExpense = participantsInExpense.reduce((sum, p) => 
+        sum + (p.additional_amount || 0), 0
+      );
+      
+      // Amount remaining after additional amounts to be split by shares
+      const shareableAmount = expense.amount - additionalAmountsInExpense;
+      
       // The person who paid gets credited
       balances[expense.paidBy] += expense.amount;
       
-      // Everyone who should split it gets debited based on their shares
+      // Everyone who should split it gets debited based on their shares + additional amounts
       expense.splitBetween.forEach(participantId => {
         const participant = participants.find(p => p.id === participantId);
         if (participant && balances.hasOwnProperty(participantId)) {
           const participantShares = participant.shares || 1;
-          const shareAmount = (expense.amount * participantShares) / totalSharesInExpense;
-          balances[participantId] -= shareAmount;
+          const shareAmount = shareableAmount > 0 ? (shareableAmount * participantShares) / totalSharesInExpense : 0;
+          const additionalAmount = participant.additional_amount || 0;
+          balances[participantId] -= (shareAmount + additionalAmount);
         }
       });
     });
@@ -106,6 +115,8 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
   const settlements = calculateSettlements();
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalShares = participants.reduce((sum, p) => sum + (p.shares || 1), 0);
+  const totalAdditionalAmounts = participants.reduce((sum, p) => sum + (p.additional_amount || 0), 0);
+  const shareableAmount = totalExpenses - totalAdditionalAmounts;
 
   if (participants.length === 0 || expenses.length === 0) {
     return (
@@ -122,7 +133,7 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
           <CardContent className="p-4 text-center">
             <DollarSign className="w-8 h-8 mx-auto mb-2" />
@@ -143,11 +154,19 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
           <CardContent className="p-4 text-center">
             <TrendingUp className="w-8 h-8 mx-auto mb-2" />
             <p className="text-sm opacity-90">Per Share</p>
-            <p className="text-2xl font-bold">${(totalExpenses / totalShares).toFixed(2)}</p>
+            <p className="text-2xl font-bold">${(shareableAmount / totalShares).toFixed(2)}</p>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
+          <CardContent className="p-4 text-center">
+            <DollarSign className="w-8 h-8 mx-auto mb-2" />
+            <p className="text-sm opacity-90">Additional Amounts</p>
+            <p className="text-2xl font-bold">${totalAdditionalAmounts.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0">
           <CardContent className="p-4 text-center">
             <ArrowRight className="w-8 h-8 mx-auto mb-2" />
             <p className="text-sm opacity-90">Transactions</p>
@@ -182,11 +201,12 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
                     </Avatar>
                     <div>
                       <span className="font-medium text-slate-800">{participant.name}</span>
-                      {shares > 1 && (
-                        <div className="text-xs text-slate-500">
-                          {shares} shares
-                        </div>
-                      )}
+                      <div className="text-xs text-slate-500 space-y-0.5">
+                        {shares > 1 && <div>{shares} shares</div>}
+                        {(participant.additional_amount || 0) !== 0 && (
+                          <div>+${(participant.additional_amount || 0).toFixed(2)} additional</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">

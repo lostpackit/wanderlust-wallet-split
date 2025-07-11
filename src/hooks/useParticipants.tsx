@@ -26,6 +26,7 @@ export const useParticipants = (tripId: string | null) => {
           participant_id,
           role,
           shares,
+          additional_amount,
           participants!fk_trip_participants_participant (
             id,
             name,
@@ -47,7 +48,8 @@ export const useParticipants = (tripId: string | null) => {
           ...(tp.participants as any),
           role: tp.role,
           shares: tp.shares,
-        })) as (Participant & { role: string; shares: number })[];
+          additional_amount: tp.additional_amount,
+        })) as (Participant & { role: string; shares: number; additional_amount: number })[];
     },
     enabled: !!tripId && !!user,
   });
@@ -241,6 +243,39 @@ export const useParticipants = (tripId: string | null) => {
     },
   });
 
+  const updateAdditionalAmountMutation = useMutation({
+    mutationFn: async ({ participantId, additionalAmount }: { participantId: string; additionalAmount: number }) => {
+      if (!tripId) throw new Error('No trip selected');
+
+      const { error } = await supabase
+        .from('trip_participants')
+        .update({ additional_amount: additionalAmount })
+        .eq('trip_id', tripId)
+        .eq('participant_id', participantId);
+
+      if (error) {
+        console.error('Update additional amount error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['participants', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      toast({
+        title: "Additional amount updated!",
+        description: "The participant's additional amount has been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Update additional amount mutation error:', error);
+      toast({
+        title: "Failed to update additional amount",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const removeParticipantMutation = useMutation({
     mutationFn: async (participantId: string) => {
       if (!tripId) throw new Error('No trip selected');
@@ -280,9 +315,11 @@ export const useParticipants = (tripId: string | null) => {
     participantsError,
     addParticipant: addParticipantMutation.mutate,
     updateParticipantShares: updateParticipantSharesMutation.mutate,
+    updateAdditionalAmount: updateAdditionalAmountMutation.mutate,
     removeParticipant: removeParticipantMutation.mutate,
     isAddingParticipant: addParticipantMutation.isPending,
     isUpdatingShares: updateParticipantSharesMutation.isPending,
+    isUpdatingAdditionalAmount: updateAdditionalAmountMutation.isPending,
     isRemovingParticipant: removeParticipantMutation.isPending,
   };
 };

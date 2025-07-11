@@ -10,6 +10,7 @@ export interface Participant {
 export interface ParticipantWithShares extends Participant {
   role: string;
   shares: number;
+  additional_amount?: number;
 }
 
 export interface Trip {
@@ -31,6 +32,7 @@ export interface TripParticipant {
   participantId: string;
   role: 'admin' | 'participant';
   shares: number; // Number of shares this participant represents
+  additional_amount?: number; // Fixed additional amount for this participant
   joinedAt: string;
 }
 

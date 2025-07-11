@@ -20,7 +20,7 @@ export interface DetailedBalances {
 export const calculateDetailedBalances = (
   trips: Trip[],
   allExpenses: { [tripId: string]: Expense[] },
-  allParticipants: { [tripId: string]: (Participant & { role: string; shares?: number })[] },
+  allParticipants: { [tripId: string]: (Participant & { role: string; shares?: number; additional_amount?: number })[] },
   currentUserId: string,
   currentUserEmail: string
 ): DetailedBalances => {
@@ -77,11 +77,16 @@ export const calculateDetailedBalances = (
 
     console.log(`Current user participant in ${trip.name}:`, currentUserParticipant);
 
-    // Calculate balances for this trip using shares-based logic
+    // Calculate balances for this trip using shares-based logic with additional amounts
     const balances: { [participantId: string]: number } = {};
     tripParticipants.forEach(p => {
       balances[p.id] = 0;
     });
+
+    // Calculate total additional amounts for all participants
+    const totalAdditionalAmounts = tripParticipants.reduce((sum, p) => 
+      sum + (p.additional_amount || 0), 0
+    );
 
     // Process each expense
     tripExpenses.forEach(expense => {
@@ -94,20 +99,24 @@ export const calculateDetailedBalances = (
         sum + (p.shares || 1), 0
       );
       
-      console.log(`Processing expense ${expense.description}: $${expense.amount}, total shares: ${totalSharesInExpense}`);
+      // Amount available for shares after additional amounts
+      const shareableAmount = expense.amount - totalAdditionalAmounts;
       
-      // The person who paid gets credited
+      console.log(`Processing expense ${expense.description}: $${expense.amount}, total shares: ${totalSharesInExpense}, shareable: $${shareableAmount}`);
+      
+      // The person who paid gets credited for the full amount
       if (balances.hasOwnProperty(expense.paidBy)) {
         balances[expense.paidBy] += expense.amount;
       }
       
-      // Everyone who should split it gets debited based on their shares
+      // Everyone who should split it gets debited based on their shares + additional amounts
       expense.splitBetween.forEach(participantId => {
         const participant = tripParticipants.find(p => p.id === participantId);
         if (participant && balances.hasOwnProperty(participantId)) {
           const participantShares = participant.shares || 1;
-          const shareAmount = (expense.amount * participantShares) / totalSharesInExpense;
-          balances[participantId] -= shareAmount;
+          const shareAmount = shareableAmount > 0 ? (shareableAmount * participantShares) / totalSharesInExpense : 0;
+          const additionalAmount = participant.additional_amount || 0;
+          balances[participantId] -= (shareAmount + additionalAmount);
         }
       });
     });

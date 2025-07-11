@@ -248,6 +248,7 @@ export type Database = {
       }
       trip_participants: {
         Row: {
+          additional_amount: number
           id: string
           joined_at: string
           participant_id: string
@@ -256,6 +257,7 @@ export type Database = {
           trip_id: string
         }
         Insert: {
+          additional_amount?: number
           id?: string
           joined_at?: string
           participant_id: string
@@ -264,6 +266,7 @@ export type Database = {
           trip_id: string
         }
         Update: {
+          additional_amount?: number
           id?: string
           joined_at?: string
           participant_id?: string

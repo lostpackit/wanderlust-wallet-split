@@ -43,6 +43,7 @@ const TripDetail = () => {
     addParticipant, 
     isAddingParticipant, 
     updateParticipantShares, 
+    updateAdditionalAmount,
     removeParticipant,
     isUpdatingShares,
     isRemovingParticipant 
@@ -114,6 +115,10 @@ const TripDetail = () => {
 
   const handleUpdateShares = (participantId: string, shares: number) => {
     updateParticipantShares({ participantId, shares });
+  };
+
+  const handleUpdateAdditionalAmount = (participantId: string, additionalAmount: number) => {
+    updateAdditionalAmount({ participantId, additionalAmount });
   };
 
   const handleRemoveParticipant = (participantId: string) => {
@@ -307,6 +312,7 @@ const TripDetail = () => {
               onAddParticipant={handleAddParticipant}
               onRemoveParticipant={handleRemoveParticipant}
               onUpdateShares={handleUpdateShares}
+              onUpdateAdditionalAmount={handleUpdateAdditionalAmount}
               hideAddForm={true}
             />
           </TabsContent>

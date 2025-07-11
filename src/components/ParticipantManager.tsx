@@ -10,10 +10,11 @@ import { Participant } from "@/types/trip";
 import { toast } from "@/hooks/use-toast";
 
 interface ParticipantManagerProps {
-  participants: (Participant & { role?: string; shares?: number })[];
+  participants: (Participant & { role?: string; shares?: number; additional_amount?: number })[];
   onAddParticipant: (participant: { name: string; email: string; shares?: number }) => void;
   onRemoveParticipant: (id: string) => void;
   onUpdateShares?: (participantId: string, shares: number) => void;
+  onUpdateAdditionalAmount?: (participantId: string, additionalAmount: number) => void;
   hideAddForm?: boolean;
 }
 
@@ -22,6 +23,7 @@ const ParticipantManager = ({
   onAddParticipant, 
   onRemoveParticipant,
   onUpdateShares,
+  onUpdateAdditionalAmount,
   hideAddForm = false
 }: ParticipantManagerProps) => {
   const [newName, setNewName] = useState('');
@@ -29,6 +31,8 @@ const ParticipantManager = ({
   const [newShares, setNewShares] = useState(1);
   const [editingShares, setEditingShares] = useState<string | null>(null);
   const [tempShares, setTempShares] = useState<number>(1);
+  const [editingAdditionalAmount, setEditingAdditionalAmount] = useState<string | null>(null);
+  const [tempAdditionalAmount, setTempAdditionalAmount] = useState<number>(0);
 
   const handleAddParticipant = () => {
     if (!newName.trim()) {
@@ -93,6 +97,23 @@ const ParticipantManager = ({
   const handleCancelEdit = () => {
     setEditingShares(null);
     setTempShares(1);
+  };
+
+  const handleEditAdditionalAmount = (participantId: string, currentAmount: number) => {
+    setEditingAdditionalAmount(participantId);
+    setTempAdditionalAmount(currentAmount);
+  };
+
+  const handleSaveAdditionalAmount = (participantId: string) => {
+    if (onUpdateAdditionalAmount) {
+      onUpdateAdditionalAmount(participantId, tempAdditionalAmount);
+    }
+    setEditingAdditionalAmount(null);
+  };
+
+  const handleCancelAdditionalAmountEdit = () => {
+    setEditingAdditionalAmount(null);
+    setTempAdditionalAmount(0);
   };
 
   const getInitials = (name: string) => {
@@ -258,6 +279,54 @@ const ParticipantManager = ({
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => handleEditShares(participant.id, shares)}
+                                  className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Additional Amount display/edit */}
+                        <div className="flex items-center gap-2 mt-1">
+                          {editingAdditionalAmount === participant.id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-slate-500">+$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={tempAdditionalAmount}
+                                onChange={(e) => setTempAdditionalAmount(parseFloat(e.target.value) || 0)}
+                                className="w-20 h-6 text-xs"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleSaveAdditionalAmount(participant.id)}
+                                className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancelAdditionalAmountEdit}
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Badge variant="outline" className="text-xs">
+                                +${(participant.additional_amount || 0).toFixed(2)}
+                              </Badge>
+                              {onUpdateAdditionalAmount && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditAdditionalAmount(participant.id, participant.additional_amount || 0)}
                                   className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600"
                                 >
                                   <Edit2 className="w-3 h-3" />
