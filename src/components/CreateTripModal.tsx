@@ -24,7 +24,7 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
   const [endDate, setEndDate] = useState<Date>();
   const [settlementDeadline, setSettlementDeadline] = useState<Date>();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !startDate || !endDate || !settlementDeadline) {
       toast({
         title: "Missing information",
@@ -43,23 +43,32 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
       return;
     }
 
-    const newTrip = {
-      name: name.trim(),
-      description: description.trim(),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      settlementDeadline: settlementDeadline.toISOString(),
-    };
+    try {
+      const newTrip = {
+        name: name.trim(),
+        description: description.trim(),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        settlementDeadline: settlementDeadline.toISOString(),
+      };
 
-    onCreateTrip(newTrip);
-    
-    // Reset form
-    setName('');
-    setDescription('');
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setSettlementDeadline(undefined);
-    setOpen(false);
+      await onCreateTrip(newTrip);
+      
+      // Reset form
+      setName('');
+      setDescription('');
+      setStartDate(undefined);
+      setEndDate(undefined);
+      setSettlementDeadline(undefined);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error creating trip:', error);
+      toast({
+        title: "Error creating trip",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

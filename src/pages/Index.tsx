@@ -73,7 +73,7 @@ const Index = () => {
         {dashboardData.dashboardData ? (
           <UserDashboard 
             dashboardData={dashboardData.dashboardData}
-            onSelectTrip={() => {}}
+            onSelectTrip={(trip) => window.location.href = `/trip/${trip.id}`}
           />
         ) : (
           <div className="text-center">
