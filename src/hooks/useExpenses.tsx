@@ -46,6 +46,9 @@ export const useExpenses = (tripId: string | null) => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+      console.log('Adding expense with user:', user?.id);
+      console.log('Expense data:', expenseData);
+      
       const { data, error } = await supabase
         .from('expenses')
         .insert([{
