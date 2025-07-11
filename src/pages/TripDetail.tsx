@@ -13,12 +13,32 @@ const TripDetail = () => {
   const { user } = useAuth();
   const { participants, expenses, participantsLoading, expensesLoading } = useTripData(tripId!);
 
+  console.log('TripDetail - tripId:', tripId);
+  console.log('TripDetail - participants:', participants);
+  console.log('TripDetail - expenses:', expenses);
+  console.log('TripDetail - loading states:', { participantsLoading, expensesLoading });
+
   if (participantsLoading || expensesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Loading trip details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tripId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Invalid Trip</h1>
+          <p className="text-gray-600 mb-4">No trip ID provided</p>
+          <Button onClick={() => navigate('/')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
