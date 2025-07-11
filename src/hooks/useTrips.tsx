@@ -72,20 +72,20 @@ export const useTrips = () => {
       let participantRecord;
       
       // First, check if a participant record already exists for this user
-      const { data: existingParticipant, error: existingParticipantError } = await supabase
+      const { data: existingParticipants, error: existingParticipantError } = await supabase
         .from('participants')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .limit(1);
 
       if (existingParticipantError) {
         console.error('Error checking for existing participant:', existingParticipantError);
         throw existingParticipantError;
       }
 
-      if (existingParticipant) {
-        console.log('Using existing participant record:', existingParticipant.id);
-        participantRecord = existingParticipant;
+      if (existingParticipants && existingParticipants.length > 0) {
+        console.log('Using existing participant record:', existingParticipants[0].id);
+        participantRecord = existingParticipants[0];
       } else {
         // Create a new participant record for the creator
         const creatorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Trip Creator';
