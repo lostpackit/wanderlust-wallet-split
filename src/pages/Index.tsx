@@ -12,8 +12,23 @@ const Index = () => {
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
   const dashboardData = useDashboardData();
 
+  console.log('Index: Current state:', { 
+    userExists: !!user, 
+    loading, 
+    view,
+    userEmail: user?.email 
+  });
+
   if (loading) {
-    return <div>Loading...</div>;
+    console.log('Index: Still loading auth state');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   // Show landing page for non-authenticated users
