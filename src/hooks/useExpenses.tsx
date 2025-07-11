@@ -6,7 +6,7 @@ import { Expense } from '@/types/trip';
 import { useToast } from '@/hooks/use-toast';
 
 export const useExpenses = (tripId: string | null) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -46,39 +46,82 @@ export const useExpenses = (tripId: string | null) => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+      // Session validation before database operations
+      if (!session || !user) {
+        throw new Error('User not authenticated or session expired');
+      }
+
       console.log('Adding expense with user:', user?.id);
+      console.log('Session exists:', !!session);
+      console.log('Session access token exists:', !!session.access_token);
       console.log('Expense data:', expenseData);
-      
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert([{
-          trip_id: expenseData.tripId,
-          description: expenseData.description,
-          amount: expenseData.amount,
-          paid_by: expenseData.paidBy,
-          split_between: expenseData.splitBetween,
-          category: expenseData.category,
-          date: expenseData.date,
-          receipt: expenseData.receipt,
-        }])
-        .select()
+
+      // Verify user has access to the trip before attempting to add expense
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('id, created_by')
+        .eq('id', expenseData.tripId)
         .single();
 
-      if (error) throw error;
+      if (tripError) {
+        console.error('Trip access check failed:', tripError);
+        throw new Error('Failed to verify trip access');
+      }
+
+      if (!tripData) {
+        throw new Error('Trip not found');
+      }
+
+      console.log('Trip creator:', tripData.created_by);
+      console.log('Current user:', user.id);
+      console.log('User is trip creator:', tripData.created_by === user.id);
+
+      // Attempt expense creation with retry logic
+      let attempt = 0;
+      const maxAttempts = 2;
       
-      return {
-        id: data.id,
-        tripId: data.trip_id,
-        description: data.description,
-        amount: data.amount,
-        paidBy: data.paid_by,
-        splitBetween: data.split_between,
-        category: data.category,
-        date: data.date,
-        receipt: data.receipt,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
+      while (attempt < maxAttempts) {
+        attempt++;
+        console.log(`Expense creation attempt ${attempt}/${maxAttempts}`);
+        
+        try {
+          const { data, error } = await supabase
+            .from('expenses')
+            .insert([{
+              trip_id: expenseData.tripId,
+              description: expenseData.description,
+              amount: expenseData.amount,
+              paid_by: expenseData.paidBy,
+              split_between: expenseData.splitBetween,
+              category: expenseData.category,
+              date: expenseData.date,
+              receipt: expenseData.receipt,
+            }])
+            .select()
+            .single();
+
+          if (error) {
+            console.error(`Attempt ${attempt} failed:`, error);
+            if (attempt === maxAttempts) {
+              throw error;
+            }
+            // Wait a bit before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+
+          console.log('Expense created successfully:', data);
+          return data;
+        } catch (err) {
+          console.error(`Attempt ${attempt} error:`, err);
+          if (attempt === maxAttempts) {
+            throw err;
+          }
+        }
+      }
+
+      throw new Error('Failed to create expense after multiple attempts');
+      
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
@@ -88,9 +131,18 @@ export const useExpenses = (tripId: string | null) => {
       });
     },
     onError: (error: Error) => {
+      console.error('Add expense mutation failed:', error);
+      
+      let errorMessage = error.message;
+      if (error.message.includes('row-level security')) {
+        errorMessage = 'Permission denied. Please ensure you have access to this trip.';
+      } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+        errorMessage = 'Access denied. Please refresh the page and try again.';
+      }
+      
       toast({
         title: "Failed to add expense",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
