@@ -95,6 +95,7 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
                   <Button
                     variant="outline"
                     onClick={() => {
+                      alert(`Clicked View Trip for: ${trip.name}, ID: ${trip.id}`);
                       console.log('View Trip clicked for:', trip);
                       console.log('Trip ID:', trip.id);
                       onSelectTrip(trip);
