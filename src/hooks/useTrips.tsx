@@ -178,8 +178,21 @@ export const useTripData = (tripId: string | null) => {
   } = useQuery({
     queryKey: ['participants', tripId],
     queryFn: async () => {
-      if (!tripId) return [];
+      if (!tripId || !user) return [];
       
+      // First check if this trip exists and if user has access
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+
+      if (tripError) {
+        console.error('Error fetching trip:', tripError);
+        throw tripError;
+      }
+
+      // Get trip participants
       const { data, error } = await supabase
         .from('trip_participants')
         .select(`
@@ -195,13 +208,31 @@ export const useTripData = (tripId: string | null) => {
         `)
         .eq('trip_id', tripId);
 
-      if (error) throw error;
-      return data
+      if (error) {
+        console.error('Error fetching participants:', error);
+        throw error;
+      }
+
+      const participants = data
         .filter(tp => tp.participants !== null)
         .map(tp => ({
           ...((tp.participants as any) || {}),
           role: tp.role,
         }));
+
+      // If no participants found but user is creator, return basic trip info
+      if (participants.length === 0 && tripData.created_by === user.id) {
+        console.log('No participants found, but user is creator. Trip may need participant setup.');
+        return [{
+          id: 'temp-creator',
+          name: user.email?.split('@')[0] || 'Trip Creator',
+          email: user.email || '',
+          role: 'admin',
+          user_id: user.id,
+        }];
+      }
+
+      return participants;
     },
     enabled: !!tripId && !!user,
   });

@@ -94,12 +94,7 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      alert(`Clicked View Trip for: ${trip.name}, ID: ${trip.id}`);
-                      console.log('View Trip clicked for:', trip);
-                      console.log('Trip ID:', trip.id);
-                      onSelectTrip(trip);
-                    }}
+                    onClick={() => onSelectTrip(trip)}
                     className="ml-4"
                   >
                     View Trip
