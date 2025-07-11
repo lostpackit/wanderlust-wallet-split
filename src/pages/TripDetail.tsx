@@ -2,16 +2,24 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Users, DollarSign } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Plus, UserPlus } from "lucide-react";
 import { useTripData } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import AddParticipantModal from "@/components/AddParticipantModal";
+import AddExpenseModal from "@/components/AddExpenseModal";
+import { useParticipants } from "@/hooks/useParticipants";
+import { useExpenses } from "@/hooks/useExpenses";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { participants, expenses, participantsLoading, expensesLoading } = useTripData(tripId!);
+  
+  // Use the dedicated hooks for mutations
+  const { addParticipant, isAddingParticipant } = useParticipants(tripId);
+  const { addExpense, isAddingExpense } = useExpenses(tripId);
 
   console.log('TripDetail - tripId:', tripId);
   console.log('TripDetail - participants:', participants);
@@ -76,10 +84,13 @@ const TripDetail = () => {
           {/* Participants */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Users className="w-5 h-5 text-blue-600" />
-                Participants ({participants.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  Participants ({participants.length})
+                </CardTitle>
+                <AddParticipantModal onAddParticipant={addParticipant} isLoading={isAddingParticipant} />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -98,10 +109,13 @@ const TripDetail = () => {
           {/* Expenses */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                Expenses ({expenses.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Expenses ({expenses.length})
+                </CardTitle>
+                <AddExpenseModal tripId={tripId!} participants={participants} onAddExpense={addExpense} isLoading={isAddingExpense} />
+              </div>
             </CardHeader>
             <CardContent>
               {expenses.length === 0 ? (
