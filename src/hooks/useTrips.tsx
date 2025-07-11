@@ -192,45 +192,52 @@ export const useTripData = (tripId: string | null) => {
         throw tripError;
       }
 
-      // Get trip participants
-      const { data, error } = await supabase
+      // Get trip participants - using separate queries to avoid relationship ambiguity
+      const { data: tripParticipants, error: tpError } = await supabase
         .from('trip_participants')
-        .select(`
-          participant_id,
-          role,
-          participants (
-            id,
-            name,
-            email,
-            avatar,
-            user_id
-          )
-        `)
+        .select('participant_id, role')
         .eq('trip_id', tripId);
 
-      if (error) {
-        console.error('Error fetching participants:', error);
-        throw error;
+      if (tpError) {
+        console.error('Error fetching trip_participants:', tpError);
+        throw tpError;
       }
 
-      const participants = data
-        .filter(tp => tp.participants !== null)
-        .map(tp => ({
-          ...((tp.participants as any) || {}),
+      if (!tripParticipants || tripParticipants.length === 0) {
+        // If no participants found but user is creator, return basic trip info
+        if (tripData.created_by === user.id) {
+          console.log('No participants found, but user is creator. Trip may need participant setup.');
+          return [{
+            id: 'temp-creator',
+            name: user.email?.split('@')[0] || 'Trip Creator',
+            email: user.email || '',
+            role: 'admin',
+            user_id: user.id,
+          }];
+        }
+        return [];
+      }
+
+      // Get participant details
+      const participantIds = tripParticipants.map(tp => tp.participant_id);
+      const { data: participantDetails, error: pError } = await supabase
+        .from('participants')
+        .select('*')
+        .in('id', participantIds);
+
+      if (pError) {
+        console.error('Error fetching participant details:', pError);
+        throw pError;
+      }
+
+      // Combine the data
+      const participants = tripParticipants.map(tp => {
+        const participant = participantDetails?.find(p => p.id === tp.participant_id);
+        return participant ? {
+          ...participant,
           role: tp.role,
-        }));
-
-      // If no participants found but user is creator, return basic trip info
-      if (participants.length === 0 && tripData.created_by === user.id) {
-        console.log('No participants found, but user is creator. Trip may need participant setup.');
-        return [{
-          id: 'temp-creator',
-          name: user.email?.split('@')[0] || 'Trip Creator',
-          email: user.email || '',
-          role: 'admin',
-          user_id: user.id,
-        }];
-      }
+        } : null;
+      }).filter(Boolean);
 
       return participants;
     },
