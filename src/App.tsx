@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import BalanceBreakdown from "./pages/BalanceBreakdown";
 import Profile from "./pages/Profile";
+import TripDetail from "./pages/TripDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/balance-breakdown" element={<BalanceBreakdown />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/trip/:tripId" element={<TripDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

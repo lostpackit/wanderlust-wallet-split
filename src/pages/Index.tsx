@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { LandingPage } from "@/components/LandingPage";
 import AuthPage from "@/components/AuthPage";
 import UserDashboard from "@/components/UserDashboard";
@@ -11,6 +12,7 @@ import { User } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
   const dashboardData = useDashboardData();
   const { createTrip } = useTrips();
@@ -73,7 +75,7 @@ const Index = () => {
         {dashboardData.dashboardData ? (
           <UserDashboard 
             dashboardData={dashboardData.dashboardData}
-            onSelectTrip={(trip) => window.location.href = `/trip/${trip.id}`}
+            onSelectTrip={(trip) => navigate(`/trip/${trip.id}`)}
           />
         ) : (
           <div className="text-center">
