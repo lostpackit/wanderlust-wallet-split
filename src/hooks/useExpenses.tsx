@@ -56,26 +56,6 @@ export const useExpenses = (tripId: string | null) => {
       console.log('Session access token exists:', !!session.access_token);
       console.log('Expense data:', expenseData);
 
-      // Verify user has access to the trip before attempting to add expense
-      const { data: tripData, error: tripError } = await supabase
-        .from('trips')
-        .select('id, created_by')
-        .eq('id', expenseData.tripId)
-        .single();
-
-      if (tripError) {
-        console.error('Trip access check failed:', tripError);
-        throw new Error('Failed to verify trip access');
-      }
-
-      if (!tripData) {
-        throw new Error('Trip not found');
-      }
-
-      console.log('Trip creator:', tripData.created_by);
-      console.log('Current user:', user.id);
-      console.log('User is trip creator:', tripData.created_by === user.id);
-
       // Attempt expense creation with retry logic
       let attempt = 0;
       const maxAttempts = 2;
