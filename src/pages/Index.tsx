@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { LandingPage } from "@/components/LandingPage";
 import AuthPage from "@/components/AuthPage";
 import UserDashboard from "@/components/UserDashboard";
@@ -13,9 +13,17 @@ import { User } from "lucide-react";
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
   const dashboardData = useDashboardData();
   const { createTrip } = useTrips();
+
+  // Handle redirect after authentication
+  useEffect(() => {
+    if (user && location.state?.redirectTo) {
+      navigate(location.state.redirectTo, { replace: true });
+    }
+  }, [user, location.state, navigate]);
 
   console.log('Index: Current state:', { 
     userExists: !!user, 
@@ -36,8 +44,12 @@ const Index = () => {
     );
   }
 
-  // Show landing page for non-authenticated users
+  // Show landing page for non-authenticated users, but redirect to auth if there's a message
   if (!user && view === 'landing') {
+    if (location.state?.message) {
+      setView('auth');
+      return <div>Redirecting to authentication...</div>;
+    }
     return <LandingPage onGetStarted={() => setView('auth')} />;
   }
 

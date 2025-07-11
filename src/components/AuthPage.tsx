@@ -1,17 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Mail, Lock, User, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const AuthPage = () => {
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -19,6 +22,17 @@ const AuthPage = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+
+  // Show message if redirected from protected route
+  useEffect(() => {
+    if (location.state?.message) {
+      toast({
+        title: "Authentication Required",
+        description: location.state.message,
+        variant: "default",
+      });
+    }
+  }, [location.state, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +119,15 @@ const AuthPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Show redirect message if present */}
+          {location.state?.message && (
+            <Alert className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                {location.state.message}
+              </AlertDescription>
+            </Alert>
+          )}
           {/* Google Sign In Button */}
           <Button
             variant="outline"

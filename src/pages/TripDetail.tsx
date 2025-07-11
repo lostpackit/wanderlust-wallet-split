@@ -31,7 +31,20 @@ import BalanceView from "@/components/BalanceView";
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  
+  // Redirect to home if not authenticated
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/', { 
+        state: { 
+          message: "Please sign in to view trip details",
+          redirectTo: `/trip/${tripId}`
+        }
+      });
+    }
+  }, [authLoading, user, navigate, tripId]);
+
   const { trip, participants, expenses, tripLoading, participantsLoading, expensesLoading } = useTripData(tripId!);
   const { deleteTrip, isDeletingTrip, updateTrip } = useTrips();
   const { createNotification } = useNotifications();
@@ -133,15 +146,21 @@ const TripDetail = () => {
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalShares = participants.reduce((sum, p) => sum + ((p as any).shares || 1), 0);
 
-  if (tripLoading || participantsLoading || expensesLoading) {
+  // Show loading while checking authentication or loading trip data
+  if (authLoading || tripLoading || participantsLoading || expensesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading trip details...</p>
+          <p>{authLoading ? 'Checking authentication...' : 'Loading trip details...'}</p>
         </div>
       </div>
     );
+  }
+
+  // Don't render content if user is not authenticated
+  if (!user) {
+    return null;
   }
 
   if (!tripId) {
