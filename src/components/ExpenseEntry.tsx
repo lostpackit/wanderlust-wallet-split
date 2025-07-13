@@ -18,10 +18,11 @@ import { toast } from "@/hooks/use-toast";
 interface ExpenseEntryProps {
   participants: Participant[];
   expenses: Expense[];
-  onAddExpense: (expense: Omit<Expense, 'id' | 'tripId' | 'createdAt' | 'updatedAt'>) => void;
+  tripId: string;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
-const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProps) => {
+const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseEntryProps) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
@@ -49,6 +50,7 @@ const ExpenseEntry = ({ participants, expenses, onAddExpense }: ExpenseEntryProp
     }
 
     const expense = {
+      tripId,
       description: description.trim(),
       amount: parseFloat(amount),
       paidBy,

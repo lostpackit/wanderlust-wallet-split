@@ -12,6 +12,7 @@ import { Participant } from '@/types/trip';
 interface AddExpenseModalProps {
   participants: (Participant & { role: string })[];
   onAddExpense: (expense: {
+    tripId: string;
     description: string;
     amount: number;
     paidBy: string;
@@ -45,6 +46,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
     e.preventDefault();
     if (description.trim() && amount && paidBy && splitBetween.length > 0) {
       onAddExpense({
+        tripId,
         description: description.trim(),
         amount: parseFloat(amount),
         paidBy,
