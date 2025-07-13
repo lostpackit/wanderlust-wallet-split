@@ -46,61 +46,93 @@ export const useExpenses = (tripId: string | null) => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
-      // Step 1: Session validation before database operations
+      // Step 1: Session validation
       if (!session || !user) {
         throw new Error('User not authenticated or session expired');
       }
 
-      console.log('Starting expense creation...');
-      console.log('User ID:', user?.id);
-      console.log('Session exists:', !!session);
-      console.log('Session access token exists:', !!session.access_token);
-
-      // Step 2: Force session refresh to ensure valid JWT token
-      try {
-        console.log('Refreshing session...');
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError) {
-          console.error('Session refresh failed:', refreshError);
-          throw new Error('Failed to refresh authentication session');
-        }
-        
-        console.log('Session refreshed successfully');
-        console.log('Refreshed session user:', refreshData.session?.user?.id);
-      } catch (refreshErr) {
-        console.error('Session refresh error:', refreshErr);
-        // Continue anyway, the session might still be valid
-      }
-
-      // Step 3: Verify session state before proceeding
-      const currentSession = await supabase.auth.getSession();
-      if (!currentSession.data.session) {
-        throw new Error('No valid session found after refresh');
-      }
-
-      console.log('Current session user after refresh:', currentSession.data.session.user.id);
-
-      // Step 4: Log authentication state for debugging
-      console.log('Authentication state verified:', {
-        hasAccessToken: !!currentSession.data.session.access_token,
-        userIdFromSession: currentSession.data.session.user.id,
-        tokenPreview: currentSession.data.session.access_token.substring(0, 20) + '...'
-      });
-
-      // Attempt expense creation with retry logic
-      let attempt = 0;
-      const maxAttempts = 3;
+      console.log('=== Starting expense creation debugging ===');
       
-      while (attempt < maxAttempts) {
-        attempt++;
-        console.log(`Expense creation attempt ${attempt}/${maxAttempts}`);
+      // Step 2: Get fresh session and access token
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error('Failed to get valid session');
+      }
+
+      const accessToken = sessionData.session.access_token;
+      console.log('Access token exists:', !!accessToken);
+      console.log('User ID from session:', sessionData.session.user.id);
+
+      // Step 3: Test database auth context with debug function
+      try {
+        console.log('Testing database auth context...');
+        const { data: authDebug, error: debugError } = await supabase
+          .rpc('debug_auth_context');
         
-        try {
-          // Use the refreshed session's supabase client
-          const { data, error } = await supabase
-            .from('expenses')
-            .insert([{
+        console.log('Database auth context:', authDebug);
+        
+        if (debugError) {
+          console.error('Debug function error:', debugError);
+        }
+      } catch (debugErr) {
+        console.error('Failed to call debug function:', debugErr);
+      }
+
+      // Step 4: Force client to use current session
+      try {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: sessionData.session.refresh_token
+        });
+        console.log('Session set on client');
+      } catch (setSessionErr) {
+        console.error('Failed to set session:', setSessionErr);
+      }
+
+      // Step 5: Try expense creation with permissive policy
+      console.log('Creating expense with data:', {
+        trip_id: expenseData.tripId,
+        description: expenseData.description,
+        amount: expenseData.amount,
+        paid_by: expenseData.paidBy,
+        split_between: expenseData.splitBetween,
+        category: expenseData.category,
+        date: expenseData.date,
+        receipt: expenseData.receipt
+      });
+      
+      try {
+        const { data, error } = await supabase
+          .from('expenses')
+          .insert([{
+            trip_id: expenseData.tripId,
+            description: expenseData.description,
+            amount: expenseData.amount,
+            paid_by: expenseData.paidBy,
+            split_between: expenseData.splitBetween,
+            category: expenseData.category,
+            date: expenseData.date,
+            receipt: expenseData.receipt
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase insert failed:', error);
+          
+          // Step 6: Try manual fetch with explicit headers as fallback
+          console.log('Trying manual fetch with explicit headers...');
+          
+          const baseUrl = 'https://suriubspgymcogfqnabm.supabase.co';
+          const response = await fetch(`${baseUrl}/rest/v1/expenses`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cml1YnNwZ3ltY29nZnFuYWJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3NTk3OTMsImV4cCI6MjA2NjMzNTc5M30.fKtl1sR99Gff4GV1wQGBZo_x9gBQw_o7w3gv97dFnYw'
+            },
+            body: JSON.stringify({
               trip_id: expenseData.tripId,
               description: expenseData.description,
               amount: expenseData.amount,
@@ -108,50 +140,29 @@ export const useExpenses = (tripId: string | null) => {
               split_between: expenseData.splitBetween,
               category: expenseData.category,
               date: expenseData.date,
-              receipt: expenseData.receipt,
-            }])
-            .select()
-            .single();
+              receipt: expenseData.receipt
+            })
+          });
 
-          if (error) {
-            console.error(`Attempt ${attempt} failed:`, error);
-            console.error('Error details:', {
-              message: error.message,
-              code: error.code,
-              details: error.details,
-              hint: error.hint
-            });
-            
-            // If it's an RLS error and we have attempts left, try refreshing auth again
-            if (error.message.includes('row-level security') && attempt < maxAttempts) {
-              console.log('RLS error detected, attempting auth refresh...');
-              await supabase.auth.refreshSession();
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              continue;
-            }
-            
-            if (attempt === maxAttempts) {
-              throw error;
-            }
-            
-            // Wait before retry
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            continue;
+          console.log('Manual fetch response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Manual fetch failed:', response.status, errorText);
+            throw new Error(`Both Supabase client and manual fetch failed. Supabase error: ${error.message}. Fetch error: ${response.status} ${errorText}`);
           }
 
-          console.log('Expense created successfully:', data);
-          return data;
-        } catch (err) {
-          console.error(`Attempt ${attempt} error:`, err);
-          if (attempt === maxAttempts) {
-            throw err;
-          }
-          // Wait before retry with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          const manualResult = await response.json();
+          console.log('Manual fetch succeeded:', manualResult);
+          return Array.isArray(manualResult) ? manualResult[0] : manualResult;
         }
-      }
 
-      throw new Error('Failed to create expense after multiple attempts');
+        console.log('Supabase insert succeeded:', data);
+        return data;
+      } catch (err) {
+        console.error('All expense creation attempts failed:', err);
+        throw err;
+      }
       
     },
     onSuccess: () => {

@@ -346,6 +346,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      debug_auth_context: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       is_user_trip_member: {
         Args: { trip_uuid: string; user_uuid: string }
         Returns: boolean
