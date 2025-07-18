@@ -1,10 +1,10 @@
-
 export interface Participant {
   id: string;
   name: string;
   email: string;
   avatar?: string;
   userId?: string; // Link to authenticated user
+  user_id?: string; // Database field name
 }
 
 export interface ParticipantWithShares extends Participant {

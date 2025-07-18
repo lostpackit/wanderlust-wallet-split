@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -44,19 +45,39 @@ export const usePayments = (tripId?: string) => {
     enabled: !!user && !!tripId,
   });
 
+  // Helper function to get user ID from participant ID
+  const getParticipantUserId = async (participantId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('participants')
+      .select('user_id')
+      .eq('id', participantId)
+      .single();
+
+    if (error || !data?.user_id) {
+      return null;
+    }
+    return data.user_id;
+  };
+
   const createPaymentMutation = useMutation({
     mutationFn: async ({
-      toUserId,
+      toParticipantId,
       amount,
       description,
       initiatedBy,
     }: {
-      toUserId: string;
+      toParticipantId: string;
       amount: number;
       description?: string;
       initiatedBy: 'payer' | 'payee';
     }) => {
       if (!user || !tripId) throw new Error('User not authenticated or trip not selected');
+
+      // Get the user ID for the target participant
+      const toUserId = await getParticipantUserId(toParticipantId);
+      if (!toUserId) {
+        throw new Error('The recipient does not have a linked user account. They need to sign up and link their account to receive payments.');
+      }
 
       const paymentData = {
         from_user_id: initiatedBy === 'payer' ? user.id : toUserId,
@@ -95,9 +116,10 @@ export const usePayments = (tripId?: string) => {
       }
     },
     onError: (error) => {
+      console.error('Payment creation error:', error);
       toast({
         title: "Error",
-        description: "Failed to process payment. Please try again.",
+        description: error.message || "Failed to process payment. Please try again.",
         variant: "destructive",
       });
     },

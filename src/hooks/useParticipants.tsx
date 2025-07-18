@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +48,7 @@ export const useParticipants = (tripId: string | null) => {
           role: tp.role,
           shares: tp.shares,
           additional_amount: tp.additional_amount,
-        })) as (Participant & { role: string; shares: number; additional_amount: number })[];
+        })) as (Participant & { role: string; shares: number; additional_amount: number; user_id?: string })[];
     },
     enabled: !!tripId && !!user,
   });

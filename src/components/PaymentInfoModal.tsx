@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,26 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, DollarSign, CheckCircle, Clock, Copy } from "lucide-react";
+import { ExternalLink, DollarSign, CheckCircle, Clock, Copy, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/useProfile";
 import { useUserPaymentMethods } from "@/hooks/useUserPaymentMethods";
 import { usePayments } from "@/hooks/usePayments";
 import { useAuth } from "@/hooks/useAuth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentInfoModalProps {
   recipientId: string;
   recipientName: string;
   amount: number;
   tripId: string;
+  recipientUserId?: string; // Optional: if we already know the user ID
 }
 
-const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: PaymentInfoModalProps) => {
+const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId, recipientUserId }: PaymentInfoModalProps) => {
   const { user } = useAuth();
   const { createPayment, isCreatingPayment } = usePayments(tripId);
-  const { data: paymentMethods, isLoading } = useUserPaymentMethods(recipientId);
+  const { data: paymentMethods, isLoading } = useUserPaymentMethods(recipientUserId || recipientId);
   const [customAmount, setCustomAmount] = useState(amount);
   const [open, setOpen] = useState(false);
+  const [hasLinkedAccount, setHasLinkedAccount] = useState(true);
   const { toast } = useToast();
 
   const copyToClipboard = (text: string) => {
@@ -37,7 +41,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
 
   const handleMarkAsPaid = () => {
     createPayment({
-      toUserId: recipientId,
+      toParticipantId: recipientId,
       amount: customAmount,
       description: `Payment to ${recipientName}`,
       initiatedBy: 'payer',
@@ -47,7 +51,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
 
   const handleMarkAsReceived = () => {
     createPayment({
-      toUserId: recipientId,
+      toParticipantId: recipientId,
       amount: customAmount,
       description: `Payment from ${recipientName}`,
       initiatedBy: 'payee',
@@ -69,6 +73,14 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
         return null;
     }
   };
+
+  // Check if no payment methods are available
+  const noPaymentMethods = !paymentMethods || (!paymentMethods.venmo_username && 
+    !paymentMethods.paypal_email && 
+    !paymentMethods.zelle_number && 
+    !paymentMethods.cashapp_tag && 
+    !paymentMethods.iban && 
+    !paymentMethods.other_payment_info);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -224,24 +236,24 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
                 </div>
               )}
 
-              {/* No payment methods */}
-              {!paymentMethods.venmo_username && 
-               !paymentMethods.paypal_email && 
-               !paymentMethods.zelle_number && 
-               !paymentMethods.cashapp_tag && 
-               !paymentMethods.iban && 
-               !paymentMethods.other_payment_info && (
-                <div className="text-center py-4 text-slate-500">
-                  No payment methods available. Contact {recipientName} directly.
-                </div>
+              {/* No payment methods warning */}
+              {noPaymentMethods && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No payment methods available. {recipientName} needs to set up their payment methods in their profile.
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
           ) : (
-            <div className="text-center py-4 text-slate-500">
-              <p className="mb-2">Unable to load payment methods.</p>
-              <p className="text-xs">This participant may not have a linked account or payment methods set up.</p>
-              <p className="text-xs mt-1">Contact {recipientName} directly at their email address.</p>
-            </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="mb-2">{recipientName} doesn't have a linked user account.</p>
+                <p className="text-xs">They need to sign up and link their account to receive digital payments. You can still contact them directly at their email address.</p>
+              </AlertDescription>
+            </Alert>
           )}
 
           <Separator />
@@ -257,7 +269,7 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId }: Paymen
               I Paid ${customAmount.toFixed(2)}
             </Button>
             
-            {user?.id === recipientId && (
+            {user?.id === recipientUserId && (
               <Button
                 onClick={handleMarkAsReceived}
                 disabled={isCreatingPayment}
