@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, PlusCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard } from "lucide-react";
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -27,6 +28,7 @@ import TripHeader from "@/components/TripHeader";
 import ParticipantManager from "@/components/ParticipantManager";
 import ExpensesList from "@/components/ExpensesList";
 import BalanceView from "@/components/BalanceView";
+import PaymentHistory from "@/components/PaymentHistory";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -253,7 +255,7 @@ const TripDetail = () => {
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm border-0 shadow-md">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm border-0 shadow-md">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Overview
@@ -269,6 +271,10 @@ const TripDetail = () => {
             <TabsTrigger value="balances" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Balances
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payments
             </TabsTrigger>
           </TabsList>
 
@@ -361,6 +367,14 @@ const TripDetail = () => {
               participants={participants}
               expenses={expenses}
               tripId={tripId!}
+            />
+          </TabsContent>
+
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <PaymentHistory
+              tripId={tripId!}
+              participants={participants}
             />
           </TabsContent>
         </Tabs>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowRight, DollarSign, TrendingUp, TrendingDown, Users } from "lucide-react";
 import { Participant, Expense } from "@/types/trip";
 import PaymentInfoModal from "./PaymentInfoModal";
+import PaymentStatusIndicator from "./PaymentStatusIndicator";
 
 interface BalanceViewProps {
   participants: (Participant & { shares?: number; additional_amount?: number })[];
@@ -109,6 +109,10 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
+
+  const getParticipantUserId = (participantId: string) => {
+    return participants.find(p => p.id === participantId)?.user_id;
   };
 
   const balances = calculateBalances();
@@ -242,52 +246,67 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {settlements.map((settlement, index) => (
-                <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 flex-shrink-0">
-                        <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white text-xs">
-                          {getInitials(getParticipantName(settlement.from))}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <span className="font-medium text-slate-800 block truncate">{getParticipantName(settlement.from)}</span>
-                        {getParticipantShares(settlement.from) > 1 && (
-                          <div className="text-xs text-slate-500">
-                            {getParticipantShares(settlement.from)} shares
-                          </div>
-                        )}
+              {settlements.map((settlement, index) => {
+                const fromUserId = getParticipantUserId(settlement.from);
+                const toUserId = getParticipantUserId(settlement.to);
+                
+                return (
+                  <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 flex-shrink-0">
+                          <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white text-xs">
+                            {getInitials(getParticipantName(settlement.from))}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-slate-800 block truncate">{getParticipantName(settlement.from)}</span>
+                          {getParticipantShares(settlement.from) > 1 && (
+                            <div className="text-xs text-slate-500">
+                              {getParticipantShares(settlement.from)} shares
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-slate-400 flex-shrink-0 self-center sm:self-auto" />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 flex-shrink-0">
+                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white text-xs">
+                            {getInitials(getParticipantName(settlement.to))}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-slate-800 block truncate">{getParticipantName(settlement.to)}</span>
+                          {getParticipantShares(settlement.to) > 1 && (
+                            <div className="text-xs text-slate-500">
+                              {getParticipantShares(settlement.to)} shares
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-slate-400 flex-shrink-0 self-center sm:self-auto" />
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 flex-shrink-0">
-                        <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white text-xs">
-                          {getInitials(getParticipantName(settlement.to))}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <span className="font-medium text-slate-800 block truncate">{getParticipantName(settlement.to)}</span>
-                        {getParticipantShares(settlement.to) > 1 && (
-                          <div className="text-xs text-slate-500">
-                            {getParticipantShares(settlement.to)} shares
-                          </div>
-                        )}
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-lg text-slate-800">${settlement.amount.toFixed(2)}</span>
+                        <PaymentInfoModal
+                          recipientId={settlement.to}
+                          recipientName={getParticipantName(settlement.to)}
+                          amount={settlement.amount}
+                          tripId={tripId}
+                          recipientUserId={toUserId}
+                        />
                       </div>
+                      {fromUserId && toUserId && (
+                        <PaymentStatusIndicator
+                          fromUserId={fromUserId}
+                          toUserId={toUserId}
+                          tripId={tripId}
+                        />
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
-                    <span className="font-bold text-lg text-slate-800">${settlement.amount.toFixed(2)}</span>
-                    <PaymentInfoModal
-                      recipientId={settlement.to}
-                      recipientName={getParticipantName(settlement.to)}
-                      amount={settlement.amount}
-                      tripId={tripId}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
