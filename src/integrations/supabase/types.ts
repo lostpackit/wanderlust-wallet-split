@@ -21,9 +21,13 @@ export type Database = {
           created_at: string
           date: string
           description: string
+          exchange_rate: number | null
           id: string
+          original_amount: number | null
+          original_currency: string | null
           paid_by: string
           receipt: string | null
+          receipt_data: Json | null
           split_between: string[]
           transaction_shares: Json | null
           trip_id: string
@@ -35,9 +39,13 @@ export type Database = {
           created_at?: string
           date: string
           description: string
+          exchange_rate?: number | null
           id?: string
+          original_amount?: number | null
+          original_currency?: string | null
           paid_by: string
           receipt?: string | null
+          receipt_data?: Json | null
           split_between: string[]
           transaction_shares?: Json | null
           trip_id: string
@@ -49,9 +57,13 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string
+          exchange_rate?: number | null
           id?: string
+          original_amount?: number | null
+          original_currency?: string | null
           paid_by?: string
           receipt?: string | null
+          receipt_data?: Json | null
           split_between?: string[]
           transaction_shares?: Json | null
           trip_id?: string
@@ -310,6 +322,7 @@ export type Database = {
       }
       trips: {
         Row: {
+          base_currency: string
           created_at: string
           created_by: string
           description: string | null
@@ -321,6 +334,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          base_currency?: string
           created_at?: string
           created_by: string
           description?: string | null
@@ -332,6 +346,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          base_currency?: string
           created_at?: string
           created_by?: string
           description?: string | null
