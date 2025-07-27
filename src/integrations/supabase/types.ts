@@ -22,6 +22,7 @@ export type Database = {
           date: string
           description: string
           exchange_rate: number | null
+          expense_source: string
           id: string
           original_amount: number | null
           original_currency: string | null
@@ -40,6 +41,7 @@ export type Database = {
           date: string
           description: string
           exchange_rate?: number | null
+          expense_source?: string
           id?: string
           original_amount?: number | null
           original_currency?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           date?: string
           description?: string
           exchange_rate?: number | null
+          expense_source?: string
           id?: string
           original_amount?: number | null
           original_currency?: string | null

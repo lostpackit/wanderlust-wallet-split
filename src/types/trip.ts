@@ -20,6 +20,7 @@ export interface Trip {
   startDate: string;
   endDate: string;
   settlementDeadline: string;
+  baseCurrency?: string; // base currency for the trip
   createdBy: string; // user id
   createdAt: string;
   updatedAt: string;
@@ -47,6 +48,11 @@ export interface Expense {
   category: string;
   date: string;
   receipt?: string; // file path or url
+  originalCurrency?: string; // original currency from receipt
+  originalAmount?: number; // original amount before conversion
+  exchangeRate?: number; // exchange rate used for conversion
+  receiptData?: any; // OCR extracted data
+  expenseSource?: 'manual' | 'scanned_receipt'; // tracking source
   createdAt: string;
   updatedAt: string;
 }

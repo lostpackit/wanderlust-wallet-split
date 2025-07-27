@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { Plus, Receipt, Loader2 } from "lucide-react";
 import { ParticipantWithShares, Expense } from '@/types/trip';
+import ReceiptScanner from './ReceiptScanner';
 
 interface AddExpenseModalProps {
   participants: ParticipantWithShares[];
   onAddExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
   isLoading: boolean;
   tripId: string;
+  baseCurrency?: string;
 }
 
 const categories = [
@@ -25,7 +28,7 @@ const categories = [
   'Other'
 ];
 
-const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddExpenseModalProps) => {
+const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCurrency = 'USD' }: AddExpenseModalProps) => {
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -34,6 +37,11 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
   const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
   const [category, setCategory] = useState('Other');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [originalCurrency, setOriginalCurrency] = useState<string | undefined>();
+  const [originalAmount, setOriginalAmount] = useState<number | undefined>();
+  const [exchangeRate, setExchangeRate] = useState<number | undefined>();
+  const [receiptData, setReceiptData] = useState<any>();
+  const [expenseSource, setExpenseSource] = useState<'manual' | 'scanned_receipt'>('manual');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,10 +55,27 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
         transactionShares,
         category,
         date: new Date(date).toISOString(),
+        originalCurrency,
+        originalAmount,
+        exchangeRate,
+        receiptData,
+        expenseSource,
       });
       resetForm();
       setOpen(false);
     }
+  };
+
+  const handleReceiptScan = (scanResult: any) => {
+    setDescription(scanResult.description);
+    setAmount(scanResult.amount.toString());
+    setCategory(scanResult.category);
+    setDate(scanResult.date);
+    setOriginalCurrency(scanResult.originalCurrency);
+    setOriginalAmount(scanResult.originalAmount);
+    setExchangeRate(scanResult.exchangeRate);
+    setReceiptData(scanResult.receiptData);
+    setExpenseSource('scanned_receipt');
   };
 
   const resetForm = () => {
@@ -61,6 +86,11 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
     setTransactionShares({});
     setCategory('Other');
     setDate(new Date().toISOString().split('T')[0]);
+    setOriginalCurrency(undefined);
+    setOriginalAmount(undefined);
+    setExchangeRate(undefined);
+    setReceiptData(undefined);
+    setExpenseSource('manual');
   };
 
   const handleSplitChange = (participantId: string, checked: boolean) => {
@@ -124,6 +154,18 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
             Record a new expense for this trip and split it among participants.
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Receipt Scanner */}
+        <div className="mb-4">
+          <ReceiptScanner 
+            baseCurrency={baseCurrency}
+            onScanComplete={handleReceiptScan}
+            disabled={isLoading}
+          />
+        </div>
+
+        <Separator />
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
