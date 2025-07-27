@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Receipt, Loader2 } from "lucide-react";
+import { Plus, Receipt, Loader2, ArrowRight } from "lucide-react";
 import { ParticipantWithShares, Expense } from '@/types/trip';
 import ReceiptScanner from './ReceiptScanner';
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddExpenseModalProps {
   participants: ParticipantWithShares[];
@@ -66,6 +67,53 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
   const [exchangeRate, setExchangeRate] = useState<number | undefined>();
   const [receiptData, setReceiptData] = useState<any>();
   const [expenseSource, setExpenseSource] = useState<'manual' | 'scanned_receipt'>('manual');
+  const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
+  const [convertedAmount, setConvertedAmount] = useState<number | undefined>();
+
+  // Convert currency when expense currency changes or amount changes
+  useEffect(() => {
+    const convertCurrency = async () => {
+      if (!amount || !expenseCurrency || expenseCurrency === baseCurrency) {
+        setConvertedAmount(undefined);
+        setOriginalCurrency(undefined);
+        setOriginalAmount(undefined);
+        setExchangeRate(undefined);
+        return;
+      }
+
+      setIsConvertingCurrency(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('convert-currency', {
+          body: {
+            fromCurrency: expenseCurrency,
+            toCurrency: baseCurrency,
+            amount: parseFloat(amount),
+            date: date
+          }
+        });
+
+        if (error) {
+          console.error('Currency conversion error:', error);
+          // Use original amount if conversion fails
+          setConvertedAmount(parseFloat(amount));
+          setExchangeRate(1);
+        } else {
+          setConvertedAmount(data.convertedAmount);
+          setOriginalCurrency(data.fromCurrency);
+          setOriginalAmount(data.originalAmount);
+          setExchangeRate(data.exchangeRate);
+        }
+      } catch (error) {
+        console.error('Currency conversion failed:', error);
+        setConvertedAmount(parseFloat(amount));
+        setExchangeRate(1);
+      } finally {
+        setIsConvertingCurrency(false);
+      }
+    };
+
+    convertCurrency();
+  }, [expenseCurrency, baseCurrency, amount, date]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,13 +149,12 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
         let finalOriginalAmount = originalAmount;
         let finalExchangeRate = exchangeRate;
         
-        // If expense currency is different from base currency, set up conversion
-        if (expenseCurrency !== baseCurrency) {
+        // If expense currency is different from base currency, use converted amount
+        if (expenseCurrency !== baseCurrency && convertedAmount !== undefined) {
+          finalAmount = convertedAmount;
           finalOriginalCurrency = expenseCurrency;
           finalOriginalAmount = parseFloat(amount);
-          // For now, use 1:1 exchange rate - in a real app, you'd fetch current rates
-          finalExchangeRate = 1; // TODO: Implement real currency conversion
-          finalAmount = parseFloat(amount); // For now, keep same amount
+          finalExchangeRate = exchangeRate;
         }
 
         onAddExpense({
@@ -159,6 +206,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
     setExchangeRate(undefined);
     setReceiptData(undefined);
     setExpenseSource('manual');
+    setConvertedAmount(undefined);
   };
 
   const handleSplitChange = (participantId: string, checked: boolean) => {
@@ -287,9 +335,24 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                 <p className="text-sm text-red-500">Amount is required</p>
               )}
               {expenseCurrency !== baseCurrency && (
-                <p className="text-xs text-muted-foreground">
-                  Will be converted to {baseCurrency} for split calculations
-                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span>Will be converted to {baseCurrency}</span>
+                    {isConvertingCurrency && <Loader2 className="h-3 w-3 animate-spin" />}
+                  </div>
+                  {convertedAmount !== undefined && !isConvertingCurrency && (
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded text-blue-700">
+                      <span>{amount} {expenseCurrency}</span>
+                      <ArrowRight className="h-3 w-3" />
+                      <span className="font-medium">{convertedAmount.toFixed(2)} {baseCurrency}</span>
+                      {exchangeRate && (
+                        <span className="text-xs opacity-75">
+                          (Rate: {exchangeRate.toFixed(4)})
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
