@@ -286,10 +286,15 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-1">
-                Split Between
-                <span className="text-red-500">*</span>
-              </Label>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1">
+                  Split Between
+                  <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-xs text-slate-600">
+                  Defaults to each participant's trip shares. You can adjust individual shares below.
+                </p>
+              </div>
               <div className="flex gap-2">
                 <Button
                   type="button"
