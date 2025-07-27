@@ -196,18 +196,28 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="expense-description">Description</Label>
+              <Label htmlFor="expense-description" className="flex items-center gap-1">
+                Description
+                <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="expense-description"
                 type="text"
                 placeholder="What was this expense for?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                className={`${!description.trim() ? 'border-red-300 focus:border-red-500' : ''}`}
                 required
               />
+              {!description.trim() && (
+                <p className="text-sm text-red-500">Description is required</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expense-amount">Amount</Label>
+              <Label htmlFor="expense-amount" className="flex items-center gap-1">
+                Amount
+                <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="expense-amount"
                 type="number"
@@ -215,16 +225,23 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                className={`${!amount ? 'border-red-300 focus:border-red-500' : ''}`}
                 required
               />
+              {!amount && (
+                <p className="text-sm text-red-500">Amount is required</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="paid-by">Paid By</Label>
+              <Label htmlFor="paid-by" className="flex items-center gap-1">
+                Paid By
+                <span className="text-red-500">*</span>
+              </Label>
               <Select value={paidBy} onValueChange={setPaidBy} required>
-                <SelectTrigger>
+                <SelectTrigger className={`${!paidBy ? 'border-red-300' : ''}`}>
                   <SelectValue placeholder="Who paid for this?" />
                 </SelectTrigger>
                 <SelectContent>
@@ -235,6 +252,9 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                   ))}
                 </SelectContent>
               </Select>
+              {!paidBy && (
+                <p className="text-sm text-red-500">Please select who paid for this expense</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
@@ -266,7 +286,10 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Split Between</Label>
+              <Label className="flex items-center gap-1">
+                Split Between
+                <span className="text-red-500">*</span>
+              </Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -286,7 +309,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                 </Button>
               </div>
             </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
+            <div className={`space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 ${splitBetween.length === 0 ? 'border-red-300' : ''}`}>
               {participants.map((participant) => (
                 <div key={participant.id} className="flex items-center justify-between gap-3 p-2 border rounded-md">
                   <div className="flex items-center space-x-2 flex-1">
@@ -316,7 +339,10 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                 </div>
               ))}
             </div>
-          </div>
+            </div>
+            {splitBetween.length === 0 && (
+              <p className="text-sm text-red-500">Please select at least one person to split this expense with</p>
+            )}
 
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

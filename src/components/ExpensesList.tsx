@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Receipt, Users } from "lucide-react";
+import { Trash2, Receipt, Users, Scan, Edit } from "lucide-react";
 import { Expense, Participant } from '@/types/trip';
 import { format } from 'date-fns';
 
@@ -66,7 +66,25 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <CardTitle className="text-lg">{expense.description}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg">{expense.description}</CardTitle>
+                  <Badge 
+                    variant={expense.expenseSource === 'scanned_receipt' ? 'default' : 'outline'}
+                    className="flex items-center gap-1"
+                  >
+                    {expense.expenseSource === 'scanned_receipt' ? (
+                      <>
+                        <Scan className="h-3 w-3" />
+                        Scanned
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="h-3 w-3" />
+                        Manual
+                      </>
+                    )}
+                  </Badge>
+                </div>
                 <CardDescription className="flex items-center gap-2">
                   <span>{format(new Date(expense.date), 'MMM dd, yyyy')}</span>
                   <Badge variant="secondary">{expense.category}</Badge>
