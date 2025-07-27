@@ -305,7 +305,7 @@ const AddExpenseModal = ({ tripId, participants, onAddExpense, isLoading, baseCu
             <Checkbox
               id="customShares"
               checked={useCustomShares}
-              onCheckedChange={setUseCustomShares}
+              onCheckedChange={(checked) => setUseCustomShares(checked === true)}
             />
             <Label htmlFor="customShares" className="text-sm">
               Use custom shares (instead of equal split)
