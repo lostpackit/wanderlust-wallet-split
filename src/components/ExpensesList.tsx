@@ -13,9 +13,10 @@ interface ExpensesListProps {
   participants: (Participant & { role: string })[];
   onDeleteExpense: (expenseId: string) => void;
   isDeleting: boolean;
+  baseCurrency?: string;
 }
 
-const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: ExpensesListProps) => {
+const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, baseCurrency = 'USD' }: ExpensesListProps) => {
   const getParticipantName = (id: string) => {
     const participant = participants.find(p => p.id === id);
     return participant?.name || 'Unknown';
@@ -84,7 +85,7 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                       </>
                     )}
                   </Badge>
-                  {expense.originalCurrency && expense.originalCurrency !== 'USD' && (
+                  {expense.originalCurrency && expense.originalCurrency !== baseCurrency && (
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <Coins className="h-3 w-3" />
                       {expense.originalCurrency}
@@ -100,7 +101,7 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                 <div className="text-2xl font-bold text-green-600">
                   {formatCurrency(expense.amount)}
                 </div>
-                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== 'USD' && (
+                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== baseCurrency && (
                   <div className="text-sm text-muted-foreground">
                     Originally {formatCurrency(expense.originalAmount, expense.originalCurrency)}
                   </div>

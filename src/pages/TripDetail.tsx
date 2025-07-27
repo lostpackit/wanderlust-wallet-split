@@ -359,6 +359,7 @@ const TripDetail = () => {
               participants={participants}
               onDeleteExpense={handleDeleteExpense}
               isDeleting={isDeletingExpense}
+              baseCurrency={trip?.baseCurrency || 'USD'}
             />
           </TabsContent>
 
