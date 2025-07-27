@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Receipt, Users, Scan, Edit } from "lucide-react";
+import { Trash2, Receipt, Users, Scan, Edit, Coins } from "lucide-react";
 import { Expense, Participant } from '@/types/trip';
 import { format } from 'date-fns';
 
@@ -84,6 +84,12 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                       </>
                     )}
                   </Badge>
+                  {expense.originalCurrency && expense.originalCurrency !== 'USD' && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Coins className="h-3 w-3" />
+                      {expense.originalCurrency}
+                    </Badge>
+                  )}
                 </div>
                 <CardDescription className="flex items-center gap-2">
                   <span>{format(new Date(expense.date), 'MMM dd, yyyy')}</span>
