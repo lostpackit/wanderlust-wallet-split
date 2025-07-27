@@ -33,6 +33,18 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
     }).format(amount);
   };
 
+  const calculateParticipantShare = (expense: Expense, participantId: string) => {
+    if (expense.transactionShares) {
+      // Use transaction-specific shares
+      const totalShares = Object.values(expense.transactionShares).reduce((sum, shares) => sum + shares, 0);
+      const participantShares = expense.transactionShares[participantId] || 0;
+      return expense.amount * participantShares / totalShares;
+    } else {
+      // Fall back to equal split
+      return expense.amount / expense.splitBetween.length;
+    }
+  };
+
   if (expenses.length === 0) {
     return (
       <Card>
@@ -97,12 +109,39 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                 </span>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {expense.splitBetween.map((participantId) => (
-                <Badge key={participantId} variant="outline" className="text-xs">
-                  {getParticipantName(participantId)}
-                </Badge>
-              ))}
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-muted-foreground">Split breakdown:</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {expense.splitBetween.map((participantId) => {
+                  const participantShare = calculateParticipantShare(expense, participantId);
+                  const participantName = getParticipantName(participantId);
+                  const shares = expense.transactionShares?.[participantId];
+                  
+                  return (
+                    <div key={participantId} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={getParticipantAvatar(participantId)} />
+                          <AvatarFallback className="text-xs">
+                            {participantName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{participantName}</span>
+                        {shares && shares !== 1 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {shares} {shares === 1 ? 'share' : 'shares'}
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-sm font-bold text-slate-700">
+                        {formatCurrency(participantShare)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>
