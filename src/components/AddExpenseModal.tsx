@@ -37,17 +37,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('AddExpenseModal - handleSubmit called', {
-      description: description.trim(),
-      amount,
-      paidBy,
-      splitBetween,
-      splitBetweenLength: splitBetween.length,
-      transactionShares
-    });
-    
     if (description.trim() && amount && paidBy && splitBetween.length > 0) {
-      console.log('AddExpenseModal - calling onAddExpense');
       onAddExpense({
         tripId,
         description: description.trim(),
@@ -60,13 +50,6 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
       });
       resetForm();
       setOpen(false);
-    } else {
-      console.log('AddExpenseModal - validation failed', {
-        hasDescription: !!description.trim(),
-        hasAmount: !!amount,
-        hasPaidBy: !!paidBy,
-        hasParticipants: splitBetween.length > 0
-      });
     }
   };
 
