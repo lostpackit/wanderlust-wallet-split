@@ -7,20 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Receipt, Loader2 } from "lucide-react";
-import { ParticipantWithShares } from '@/types/trip';
+import { ParticipantWithShares, Expense } from '@/types/trip';
 
 interface AddExpenseModalProps {
   participants: ParticipantWithShares[];
-  onAddExpense: (expense: {
-    tripId: string;
-    description: string;
-    amount: number;
-    paidBy: string;
-    splitBetween: string[];
-    transactionShares?: { [participantId: string]: number };
-    category: string;
-    date: string;
-  }) => void;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
   isLoading: boolean;
   tripId: string;
 }
@@ -46,7 +37,17 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('AddExpenseModal - handleSubmit called', {
+      description: description.trim(),
+      amount,
+      paidBy,
+      splitBetween,
+      splitBetweenLength: splitBetween.length,
+      transactionShares
+    });
+    
     if (description.trim() && amount && paidBy && splitBetween.length > 0) {
+      console.log('AddExpenseModal - calling onAddExpense');
       onAddExpense({
         tripId,
         description: description.trim(),
@@ -59,6 +60,13 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
       });
       resetForm();
       setOpen(false);
+    } else {
+      console.log('AddExpenseModal - validation failed', {
+        hasDescription: !!description.trim(),
+        hasAmount: !!amount,
+        hasPaidBy: !!paidBy,
+        hasParticipants: splitBetween.length > 0
+      });
     }
   };
 
