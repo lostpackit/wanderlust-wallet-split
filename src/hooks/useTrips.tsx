@@ -96,6 +96,7 @@ export const useTrips = () => {
           start_date: tripData.startDate,
           end_date: tripData.endDate,
           settlement_deadline: tripData.settlementDeadline,
+          base_currency: tripData.baseCurrency || 'USD',
           created_by: user.id,
         }])
         .select()
@@ -395,6 +396,7 @@ export const useTripData = (tripId: string | null) => {
         startDate: data.start_date,
         endDate: data.end_date,
         settlementDeadline: data.settlement_deadline,
+        baseCurrency: data.base_currency,
         createdBy: data.created_by,
         createdAt: data.created_at,
         updatedAt: data.updated_at,

@@ -350,7 +350,8 @@ const TripDetail = () => {
                 tripId={tripId!} 
                 participants={participants as any} 
                 onAddExpense={addExpense} 
-                isLoading={isAddingExpense} 
+                isLoading={isAddingExpense}
+                baseCurrency={trip?.baseCurrency || 'USD'}
               />
             </div>
             <ExpensesList

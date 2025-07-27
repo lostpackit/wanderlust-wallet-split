@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, PlusCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CalendarIcon, PlusCircle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Trip } from "@/types/trip";
@@ -16,6 +18,19 @@ interface CreateTripModalProps {
   onCreateTrip: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => void;
 }
 
+const currencies = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
+];
+
 const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -23,6 +38,7 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [settlementDeadline, setSettlementDeadline] = useState<Date>();
+  const [baseCurrency, setBaseCurrency] = useState('USD');
 
   const handleSubmit = async () => {
     if (!name.trim() || !startDate || !endDate || !settlementDeadline) {
@@ -50,6 +66,7 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         settlementDeadline: settlementDeadline.toISOString(),
+        baseCurrency,
       };
 
       await onCreateTrip(newTrip);
@@ -60,6 +77,7 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
       setStartDate(undefined);
       setEndDate(undefined);
       setSettlementDeadline(undefined);
+      setBaseCurrency('USD');
       setOpen(false);
     } catch (error) {
       console.error('Error creating trip:', error);
@@ -160,6 +178,37 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label>Base Currency *</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      This is the currency all trip participants have agreed to settle up with. 
+                      Expenses in other currencies will be converted to this base currency.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Select value={baseCurrency} onValueChange={setBaseCurrency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((currency) => (
+                  <SelectItem key={currency.code} value={currency.code}>
+                    {currency.symbol} {currency.code} - {currency.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
