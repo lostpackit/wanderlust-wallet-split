@@ -28,6 +28,29 @@ const categories = [
   'Other'
 ];
 
+const currencies = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'MXN', symbol: '$', name: 'Mexican Peso' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
+  { code: 'PLN', symbol: 'zł', name: 'Polish Zloty' },
+  { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna' },
+  { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint' }
+];
+
 const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCurrency = 'USD' }: AddExpenseModalProps) => {
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState('');
@@ -37,6 +60,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
   const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
   const [category, setCategory] = useState('Other');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expenseCurrency, setExpenseCurrency] = useState(baseCurrency);
   const [originalCurrency, setOriginalCurrency] = useState<string | undefined>();
   const [originalAmount, setOriginalAmount] = useState<number | undefined>();
   const [exchangeRate, setExchangeRate] = useState<number | undefined>();
@@ -71,21 +95,36 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
         expenseSource,
       });
       
-      onAddExpense({
-        tripId,
-        description: description.trim(),
-        amount: parseFloat(amount),
-        paidBy,
-        splitBetween,
-        transactionShares,
-        category,
-        date: new Date(date).toISOString(),
-        originalCurrency,
-        originalAmount,
-        exchangeRate,
-        receiptData,
-        expenseSource,
-      });
+        // Calculate conversion if needed
+        let finalAmount = parseFloat(amount);
+        let finalOriginalCurrency = originalCurrency;
+        let finalOriginalAmount = originalAmount;
+        let finalExchangeRate = exchangeRate;
+        
+        // If expense currency is different from base currency, set up conversion
+        if (expenseCurrency !== baseCurrency) {
+          finalOriginalCurrency = expenseCurrency;
+          finalOriginalAmount = parseFloat(amount);
+          // For now, use 1:1 exchange rate - in a real app, you'd fetch current rates
+          finalExchangeRate = 1; // TODO: Implement real currency conversion
+          finalAmount = parseFloat(amount); // For now, keep same amount
+        }
+
+        onAddExpense({
+          tripId,
+          description: description.trim(),
+          amount: finalAmount,
+          paidBy,
+          splitBetween,
+          transactionShares,
+          category,
+          date: new Date(date).toISOString(),
+          originalCurrency: finalOriginalCurrency,
+          originalAmount: finalOriginalAmount,
+          exchangeRate: finalExchangeRate,
+          receiptData,
+          expenseSource,
+        });
       resetForm();
       setOpen(false);
     } else {
@@ -98,6 +137,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
     setAmount(scanResult.amount.toString());
     setCategory(scanResult.category);
     setDate(scanResult.date);
+    setExpenseCurrency(scanResult.originalCurrency || baseCurrency);
     setOriginalCurrency(scanResult.originalCurrency);
     setOriginalAmount(scanResult.originalAmount);
     setExchangeRate(scanResult.exchangeRate);
@@ -113,6 +153,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
     setTransactionShares({});
     setCategory('Other');
     setDate(new Date().toISOString().split('T')[0]);
+    setExpenseCurrency(baseCurrency);
     setOriginalCurrency(undefined);
     setOriginalAmount(undefined);
     setExchangeRate(undefined);
@@ -218,18 +259,37 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
                 Amount
                 <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="expense-amount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className={`${!amount ? 'border-red-300 focus:border-red-500' : ''}`}
-                required
-              />
+              <div className="flex gap-2">
+                <Select value={expenseCurrency} onValueChange={setExpenseCurrency}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="expense-amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={`flex-1 ${!amount ? 'border-red-300 focus:border-red-500' : ''}`}
+                  required
+                />
+              </div>
               {!amount && (
                 <p className="text-sm text-red-500">Amount is required</p>
+              )}
+              {expenseCurrency !== baseCurrency && (
+                <p className="text-xs text-muted-foreground">
+                  Will be converted to {baseCurrency} for split calculations
+                </p>
               )}
             </div>
           </div>

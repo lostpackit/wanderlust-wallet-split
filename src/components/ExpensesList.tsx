@@ -26,10 +26,10 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
     return participant?.avatar;
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency,
     }).format(amount);
   };
 
@@ -94,6 +94,11 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                 <div className="text-2xl font-bold text-green-600">
                   {formatCurrency(expense.amount)}
                 </div>
+                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== 'USD' && (
+                  <div className="text-sm text-muted-foreground">
+                    Originally {formatCurrency(expense.originalAmount, expense.originalCurrency)}
+                  </div>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
