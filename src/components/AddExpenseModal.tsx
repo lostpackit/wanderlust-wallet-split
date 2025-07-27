@@ -1,490 +1,350 @@
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Receipt, Loader2, ArrowRight } from "lucide-react";
-import { ParticipantWithShares, Expense } from '@/types/trip';
-import ReceiptScanner from './ReceiptScanner';
-import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Calculator, Coins } from "lucide-react";
+import { ParticipantWithShares } from '@/types/trip';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddExpenseModalProps {
-  participants: ParticipantWithShares[];
-  onAddExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  isLoading: boolean;
   tripId: string;
+  participants: ParticipantWithShares[];
+  onAddExpense: (expense: any) => void;
+  isLoading: boolean;
   baseCurrency?: string;
 }
 
-const categories = [
+const EXPENSE_CATEGORIES = [
   'Food & Dining',
   'Transportation',
   'Accommodation',
   'Entertainment',
   'Shopping',
+  'Activities',
   'Other'
 ];
 
-const currencies = [
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
-  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
-  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
-  { code: 'MXN', symbol: '$', name: 'Mexican Peso' },
-  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
-  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
-  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
-  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
-  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
-  { code: 'PLN', symbol: 'zł', name: 'Polish Zloty' },
-  { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna' },
-  { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint' }
+const CURRENCIES = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
 ];
 
-const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCurrency = 'USD' }: AddExpenseModalProps) => {
-  const [open, setOpen] = useState(false);
+const AddExpenseModal = ({ tripId, participants, onAddExpense, isLoading, baseCurrency = 'USD' }: AddExpenseModalProps) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [originalCurrency, setOriginalCurrency] = useState(baseCurrency);
   const [paidBy, setPaidBy] = useState('');
+  const [category, setCategory] = useState('');
   const [splitBetween, setSplitBetween] = useState<string[]>([]);
-  const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
-  const [category, setCategory] = useState('Other');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [expenseCurrency, setExpenseCurrency] = useState(baseCurrency);
-  const [originalCurrency, setOriginalCurrency] = useState<string | undefined>();
-  const [originalAmount, setOriginalAmount] = useState<number | undefined>();
-  const [exchangeRate, setExchangeRate] = useState<number | undefined>();
-  const [receiptData, setReceiptData] = useState<any>();
-  const [expenseSource, setExpenseSource] = useState<'manual' | 'scanned_receipt'>('manual');
-  const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
-  const [convertedAmount, setConvertedAmount] = useState<number | undefined>();
+  const [customShares, setCustomShares] = useState<{ [key: string]: number }>({});
+  const [useCustomShares, setUseCustomShares] = useState(false);
+  const [conversionData, setConversionData] = useState<{
+    convertedAmount: number;
+    exchangeRate: number;
+  } | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const { toast } = useToast();
 
-  // Convert currency when expense currency changes or amount changes
-  useEffect(() => {
-    const convertCurrency = async () => {
-      if (!amount || !expenseCurrency || expenseCurrency === baseCurrency) {
-        setConvertedAmount(undefined);
-        setOriginalCurrency(undefined);
-        setOriginalAmount(undefined);
-        setExchangeRate(undefined);
-        return;
-      }
+  const handleConvertCurrency = async () => {
+    if (!amount || !originalCurrency || originalCurrency === baseCurrency) {
+      setConversionData(null);
+      return;
+    }
 
-      setIsConvertingCurrency(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('convert-currency', {
-          body: {
-            fromCurrency: expenseCurrency,
-            toCurrency: baseCurrency,
-            amount: parseFloat(amount),
-            date: date
-          }
-        });
-
-        if (error) {
-          console.error('Currency conversion error:', error);
-          // Use original amount if conversion fails
-          setConvertedAmount(parseFloat(amount));
-          setExchangeRate(1);
-        } else {
-          setConvertedAmount(data.convertedAmount);
-          setOriginalCurrency(data.fromCurrency);
-          setOriginalAmount(data.originalAmount);
-          setExchangeRate(data.exchangeRate);
+    setIsConverting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('convert-currency', {
+        body: {
+          fromCurrency: originalCurrency,
+          toCurrency: baseCurrency,
+          amount: parseFloat(amount),
+          date: new Date().toISOString().split('T')[0]
         }
-      } catch (error) {
-        console.error('Currency conversion failed:', error);
-        setConvertedAmount(parseFloat(amount));
-        setExchangeRate(1);
-      } finally {
-        setIsConvertingCurrency(false);
-      }
-    };
-
-    convertCurrency();
-  }, [expenseCurrency, baseCurrency, amount, date]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('AddExpenseModal - handleSubmit called');
-    console.log('Form validation:', {
-      description: description.trim(),
-      amount,
-      paidBy,
-      splitBetween: splitBetween.length,
-      hasOnAddExpense: !!onAddExpense
-    });
-    
-    if (description.trim() && amount && paidBy && splitBetween.length > 0) {
-      console.log('AddExpenseModal - submitting expense data:', {
-        tripId,
-        description: description.trim(),
-        amount: parseFloat(amount),
-        paidBy,
-        splitBetween,
-        transactionShares,
-        category,
-        date: new Date(date).toISOString(),
-        originalCurrency,
-        originalAmount,
-        exchangeRate,
-        receiptData,
-        expenseSource,
       });
-      
-        // Calculate conversion if needed
-        let finalAmount = parseFloat(amount);
-        let finalOriginalCurrency = originalCurrency;
-        let finalOriginalAmount = originalAmount;
-        let finalExchangeRate = exchangeRate;
-        
-        // If expense currency is different from base currency, use converted amount
-        if (expenseCurrency !== baseCurrency && convertedAmount !== undefined) {
-          finalAmount = convertedAmount;
-          finalOriginalCurrency = expenseCurrency;
-          finalOriginalAmount = parseFloat(amount);
-          finalExchangeRate = exchangeRate;
-        }
 
-        onAddExpense({
-          tripId,
-          description: description.trim(),
-          amount: finalAmount,
-          paidBy,
-          splitBetween,
-          transactionShares,
-          category,
-          date: new Date(date).toISOString(),
-          originalCurrency: finalOriginalCurrency,
-          originalAmount: finalOriginalAmount,
-          exchangeRate: finalExchangeRate,
-          receiptData,
-          expenseSource,
-        });
-      resetForm();
-      setOpen(false);
-    } else {
-      console.log('AddExpenseModal - form validation failed');
+      if (error) throw error;
+
+      setConversionData({
+        convertedAmount: data.convertedAmount,
+        exchangeRate: data.exchangeRate
+      });
+    } catch (error) {
+      console.error('Currency conversion error:', error);
+      toast({
+        title: "Currency conversion failed",
+        description: "Using original amount. Please try again.",
+        variant: "destructive",
+      });
+      setConversionData(null);
+    } finally {
+      setIsConverting(false);
     }
   };
 
-  const handleReceiptScan = (scanResult: any) => {
-    setDescription(scanResult.description);
-    setAmount(scanResult.amount.toString());
-    setCategory(scanResult.category);
-    setDate(scanResult.date);
-    setExpenseCurrency(scanResult.originalCurrency || baseCurrency);
-    setOriginalCurrency(scanResult.originalCurrency);
-    setOriginalAmount(scanResult.originalAmount);
-    setExchangeRate(scanResult.exchangeRate);
-    setReceiptData(scanResult.receiptData);
-    setExpenseSource('scanned_receipt');
-  };
-
-  const resetForm = () => {
-    setDescription('');
-    setAmount('');
-    setPaidBy('');
-    setSplitBetween([]);
-    setTransactionShares({});
-    setCategory('Other');
-    setDate(new Date().toISOString().split('T')[0]);
-    setExpenseCurrency(baseCurrency);
-    setOriginalCurrency(undefined);
-    setOriginalAmount(undefined);
-    setExchangeRate(undefined);
-    setReceiptData(undefined);
-    setExpenseSource('manual');
-    setConvertedAmount(undefined);
-  };
-
-  const handleSplitChange = (participantId: string, checked: boolean) => {
-    if (checked) {
-      setSplitBetween([...splitBetween, participantId]);
-      // Set default shares based on participant's trip shares
-      const participant = participants.find(p => p.id === participantId);
-      const participantShares = participant?.shares || 1;
-      setTransactionShares(prev => ({
-        ...prev,
-        [participantId]: participantShares
-      }));
+  React.useEffect(() => {
+    if (amount && originalCurrency !== baseCurrency) {
+      handleConvertCurrency();
     } else {
-      setSplitBetween(splitBetween.filter(id => id !== participantId));
-      setTransactionShares(prev => {
-        const newShares = { ...prev };
-        delete newShares[participantId];
-        return newShares;
-      });
+      setConversionData(null);
     }
+  }, [amount, originalCurrency, baseCurrency]);
+
+  const handleParticipantToggle = (participantId: string) => {
+    setSplitBetween(prev => 
+      prev.includes(participantId) 
+        ? prev.filter(id => id !== participantId)
+        : [...prev, participantId]
+    );
   };
 
-  const handleSharesChange = (participantId: string, shares: number) => {
-    setTransactionShares(prev => ({
+  const handleShareChange = (participantId: string, shares: number) => {
+    setCustomShares(prev => ({
       ...prev,
       [participantId]: shares
     }));
   };
 
-  const selectAllParticipants = () => {
-    const allParticipantIds = participants.map(p => p.id);
-    setSplitBetween(allParticipantIds);
-    // Set default shares for all participants
-    const allShares = participants.reduce((acc, p) => {
-      acc[p.id] = p.shares || 1;
-      return acc;
-    }, {} as { [key: string]: number });
-    setTransactionShares(allShares);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!description || !amount || !paidBy || !category || splitBetween.length === 0) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const clearAllParticipants = () => {
+    const finalAmount = conversionData ? conversionData.convertedAmount : parseFloat(amount);
+    const transactionShares = useCustomShares ? customShares : undefined;
+
+    const expenseData = {
+      tripId,
+      description,
+      amount: finalAmount,
+      originalAmount: originalCurrency !== baseCurrency ? parseFloat(amount) : undefined,
+      originalCurrency: originalCurrency !== baseCurrency ? originalCurrency : undefined,
+      exchangeRate: conversionData ? conversionData.exchangeRate : undefined,
+      paidBy,
+      splitBetween,
+      transactionShares,
+      category,
+      date: new Date().toISOString().split('T')[0],
+      expenseSource: 'manual',
+    };
+
+    onAddExpense(expenseData);
+    
+    // Reset form
+    setDescription('');
+    setAmount('');
+    setOriginalCurrency(baseCurrency);
+    setPaidBy('');
+    setCategory('');
     setSplitBetween([]);
-    setTransactionShares({});
+    setCustomShares({});
+    setUseCustomShares(false);
+    setConversionData(null);
+    setIsOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+          <Plus className="w-4 h-4 mr-2" />
           Add Expense
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Add Expense
-          </DialogTitle>
-          <DialogDescription>
-            Record a new expense for this trip and split it among participants.
-          </DialogDescription>
+          <DialogTitle>Add New Expense</DialogTitle>
         </DialogHeader>
-        
-        {/* Receipt Scanner */}
-        <div className="mb-4">
-          <ReceiptScanner 
-            baseCurrency={baseCurrency}
-            onScanComplete={handleReceiptScan}
-            disabled={isLoading}
-          />
-        </div>
-
-        <Separator />
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="expense-description" className="flex items-center gap-1">
-                Description
-                <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="expense-description"
-                type="text"
-                placeholder="What was this expense for?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className={`${!description.trim() ? 'border-red-300 focus:border-red-500' : ''}`}
-                required
-              />
-              {!description.trim() && (
-                <p className="text-sm text-red-500">Description is required</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expense-amount" className="flex items-center gap-1">
-                Amount
-                <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Select value={expenseCurrency} onValueChange={setExpenseCurrency}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencies.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code}>
-                        {currency.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  id="expense-amount"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className={`flex-1 ${!amount ? 'border-red-300 focus:border-red-500' : ''}`}
-                  required
-                />
-              </div>
-              {!amount && (
-                <p className="text-sm text-red-500">Amount is required</p>
-              )}
-              {expenseCurrency !== baseCurrency && (
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span>Will be converted to {baseCurrency}</span>
-                    {isConvertingCurrency && <Loader2 className="h-3 w-3 animate-spin" />}
-                  </div>
-                  {convertedAmount !== undefined && !isConvertingCurrency && (
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded text-blue-700">
-                      <span>{amount} {expenseCurrency}</span>
-                      <ArrowRight className="h-3 w-3" />
-                      <span className="font-medium">{convertedAmount.toFixed(2)} {baseCurrency}</span>
-                      {exchangeRate && (
-                        <span className="text-xs opacity-75">
-                          (Rate: {exchangeRate.toFixed(4)})
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="paid-by" className="flex items-center gap-1">
-                Paid By
-                <span className="text-red-500">*</span>
-              </Label>
-              <Select value={paidBy} onValueChange={setPaidBy} required>
-                <SelectTrigger className={`${!paidBy ? 'border-red-300' : ''}`}>
-                  <SelectValue placeholder="Who paid for this?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {participants.map((participant) => (
-                    <SelectItem key={participant.id} value={participant.id}>
-                      {participant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!paidBy && (
-                <p className="text-sm text-red-500">Please select who paid for this expense</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expense-date">Date</Label>
+          <div>
+            <Label htmlFor="description">Description *</Label>
             <Input
-              id="expense-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What was this expense for?"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="flex items-center gap-1">
-                  Split Between
-                  <span className="text-red-500">*</span>
-                </Label>
-                <p className="text-xs text-slate-600">
-                  Defaults to each participant's trip shares. You can adjust individual shares below.
-                </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="amount">Amount *</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={originalCurrency} onValueChange={setOriginalCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.code} - {currency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {conversionData && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Calculator className="w-4 h-4 text-blue-600" />
+                <span className="font-medium text-blue-800">Currency Conversion</span>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={selectAllParticipants}
-                >
-                  Select All
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={clearAllParticipants}
-                >
-                  Clear All
-                </Button>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Original Amount:</span>
+                  <span className="font-medium">{parseFloat(amount).toFixed(2)} {originalCurrency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Converted Amount:</span>
+                  <span className="font-medium">{conversionData.convertedAmount.toFixed(2)} {baseCurrency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Exchange Rate:</span>
+                  <span className="font-medium">1 {originalCurrency} = {conversionData.exchangeRate.toFixed(4)} {baseCurrency}</span>
+                </div>
               </div>
             </div>
-            <div className={`space-y-2 max-h-48 overflow-y-auto border rounded-md p-3 ${splitBetween.length === 0 ? 'border-red-300' : ''}`}>
+          )}
+
+          {isConverting && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-yellow-600 animate-spin" />
+                <span className="text-yellow-800">Converting currency...</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor="paidBy">Paid by *</Label>
+            <Select value={paidBy} onValueChange={setPaidBy}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select who paid" />
+              </SelectTrigger>
+              <SelectContent>
+                {participants.map((participant) => (
+                  <SelectItem key={participant.id} value={participant.id}>
+                    {participant.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="category">Category *</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Split between * (select participants)</Label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
               {participants.map((participant) => (
-                <div key={participant.id} className="flex items-center justify-between gap-3 p-2 border rounded-md">
-                  <div className="flex items-center space-x-2 flex-1">
-                    <Checkbox
-                      id={`split-${participant.id}`}
-                      checked={splitBetween.includes(participant.id)}
-                      onCheckedChange={(checked) => 
-                        handleSplitChange(participant.id, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`split-${participant.id}`} className="text-sm flex-1">
-                      {participant.name}
-                    </Label>
-                  </div>
-                  {splitBetween.includes(participant.id) && (
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Shares:</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        className="w-16 h-8 text-sm"
-                        value={transactionShares[participant.id] || 1}
-                        onChange={(e) => handleSharesChange(participant.id, parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-                  )}
+                <div key={participant.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={participant.id}
+                    checked={splitBetween.includes(participant.id)}
+                    onCheckedChange={() => handleParticipantToggle(participant.id)}
+                  />
+                  <Label htmlFor={participant.id} className="text-sm">
+                    {participant.name}
+                  </Label>
                 </div>
               ))}
             </div>
-            </div>
-            {splitBetween.length === 0 && (
-              <p className="text-sm text-red-500">Please select at least one person to split this expense with</p>
-            )}
+          </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="customShares"
+              checked={useCustomShares}
+              onCheckedChange={setUseCustomShares}
+            />
+            <Label htmlFor="customShares" className="text-sm">
+              Use custom shares (instead of equal split)
+            </Label>
+          </div>
+
+          {useCustomShares && (
+            <div>
+              <Label>Custom shares for selected participants</Label>
+              <div className="space-y-2 mt-2">
+                {splitBetween.map((participantId) => {
+                  const participant = participants.find(p => p.id === participantId);
+                  if (!participant) return null;
+                  
+                  return (
+                    <div key={participantId} className="flex items-center space-x-2">
+                      <Label className="w-32 text-sm">{participant.name}:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={customShares[participantId] || 1}
+                        onChange={(e) => handleShareChange(participantId, parseFloat(e.target.value) || 1)}
+                        className="w-20"
+                      />
+                      <span className="text-sm text-muted-foreground">shares</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || splitBetween.length === 0}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                'Add Expense'
-              )}
+            <Button type="submit" disabled={isLoading || isConverting}>
+              {isLoading ? 'Adding...' : 'Add Expense'}
             </Button>
           </div>
         </form>
