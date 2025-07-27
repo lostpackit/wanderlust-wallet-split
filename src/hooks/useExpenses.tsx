@@ -38,11 +38,6 @@ export const useExpenses = (tripId: string | null) => {
         category: expense.category,
         date: expense.date,
         receipt: expense.receipt,
-        originalCurrency: expense.original_currency,
-        originalAmount: expense.original_amount,
-        exchangeRate: expense.exchange_rate,
-        receiptData: expense.receipt_data,
-        expenseSource: expense.expense_source as 'manual' | 'scanned_receipt' | undefined,
         createdAt: expense.created_at,
         updatedAt: expense.updated_at,
       }));
@@ -95,22 +90,17 @@ export const useExpenses = (tripId: string | null) => {
         console.error('Failed to set session:', setSessionErr);
       }
 
-      // Step 5: Try expense creation with all the new currency fields
+      // Step 5: Try expense creation with permissive policy
       console.log('Creating expense with data:', {
         trip_id: expenseData.tripId,
         description: expenseData.description,
         amount: expenseData.amount,
-        original_amount: expenseData.originalAmount,
-        original_currency: expenseData.originalCurrency,
-        exchange_rate: expenseData.exchangeRate,
         paid_by: expenseData.paidBy,
         split_between: expenseData.splitBetween,
         transaction_shares: expenseData.transactionShares,
         category: expenseData.category,
         date: expenseData.date,
-        receipt: expenseData.receipt,
-        receipt_data: expenseData.receiptData,
-        expense_source: expenseData.expenseSource
+        receipt: expenseData.receipt
       });
       
       try {
@@ -120,17 +110,12 @@ export const useExpenses = (tripId: string | null) => {
             trip_id: expenseData.tripId,
             description: expenseData.description,
             amount: expenseData.amount,
-            original_amount: expenseData.originalAmount,
-            original_currency: expenseData.originalCurrency,
-            exchange_rate: expenseData.exchangeRate,
             paid_by: expenseData.paidBy,
             split_between: expenseData.splitBetween,
             transaction_shares: expenseData.transactionShares,
             category: expenseData.category,
             date: expenseData.date,
-            receipt: expenseData.receipt,
-            receipt_data: expenseData.receiptData,
-            expense_source: expenseData.expenseSource
+            receipt: expenseData.receipt
           }])
           .select()
           .single();
@@ -154,17 +139,12 @@ export const useExpenses = (tripId: string | null) => {
               trip_id: expenseData.tripId,
               description: expenseData.description,
               amount: expenseData.amount,
-              original_amount: expenseData.originalAmount,
-              original_currency: expenseData.originalCurrency,
-              exchange_rate: expenseData.exchangeRate,
               paid_by: expenseData.paidBy,
               split_between: expenseData.splitBetween,
               transaction_shares: expenseData.transactionShares,
               category: expenseData.category,
               date: expenseData.date,
-              receipt: expenseData.receipt,
-              receipt_data: expenseData.receiptData,
-              expense_source: expenseData.expenseSource
+              receipt: expenseData.receipt
             })
           });
 
@@ -221,17 +201,12 @@ export const useExpenses = (tripId: string | null) => {
         .update({
           description: expenseData.description,
           amount: expenseData.amount,
-          original_amount: expenseData.originalAmount,
-          original_currency: expenseData.originalCurrency,
-          exchange_rate: expenseData.exchangeRate,
           paid_by: expenseData.paidBy,
           split_between: expenseData.splitBetween,
           transaction_shares: expenseData.transactionShares,
           category: expenseData.category,
           date: expenseData.date,
           receipt: expenseData.receipt,
-          receipt_data: expenseData.receiptData,
-          expense_source: expenseData.expenseSource,
         })
         .eq('id', id)
         .select()
