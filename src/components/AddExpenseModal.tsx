@@ -45,7 +45,32 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('AddExpenseModal - handleSubmit called');
+    console.log('Form validation:', {
+      description: description.trim(),
+      amount,
+      paidBy,
+      splitBetween: splitBetween.length,
+      hasOnAddExpense: !!onAddExpense
+    });
+    
     if (description.trim() && amount && paidBy && splitBetween.length > 0) {
+      console.log('AddExpenseModal - submitting expense data:', {
+        tripId,
+        description: description.trim(),
+        amount: parseFloat(amount),
+        paidBy,
+        splitBetween,
+        transactionShares,
+        category,
+        date: new Date(date).toISOString(),
+        originalCurrency,
+        originalAmount,
+        exchangeRate,
+        receiptData,
+        expenseSource,
+      });
+      
       onAddExpense({
         tripId,
         description: description.trim(),
@@ -63,6 +88,8 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
       });
       resetForm();
       setOpen(false);
+    } else {
+      console.log('AddExpenseModal - form validation failed');
     }
   };
 
