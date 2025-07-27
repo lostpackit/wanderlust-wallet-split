@@ -7,16 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Receipt, Loader2 } from "lucide-react";
-import { Participant } from '@/types/trip';
+import { ParticipantWithShares } from '@/types/trip';
 
 interface AddExpenseModalProps {
-  participants: (Participant & { role: string })[];
+  participants: ParticipantWithShares[];
   onAddExpense: (expense: {
     tripId: string;
     description: string;
     amount: number;
     paidBy: string;
     splitBetween: string[];
+    transactionShares?: { [participantId: string]: number };
     category: string;
     date: string;
   }) => void;
@@ -39,6 +40,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [splitBetween, setSplitBetween] = useState<string[]>([]);
+  const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
   const [category, setCategory] = useState('Other');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -51,6 +53,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
         amount: parseFloat(amount),
         paidBy,
         splitBetween,
+        transactionShares,
         category,
         date: new Date(date).toISOString(),
       });
@@ -64,6 +67,7 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
     setAmount('');
     setPaidBy('');
     setSplitBetween([]);
+    setTransactionShares({});
     setCategory('Other');
     setDate(new Date().toISOString().split('T')[0]);
   };
@@ -71,17 +75,44 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
   const handleSplitChange = (participantId: string, checked: boolean) => {
     if (checked) {
       setSplitBetween([...splitBetween, participantId]);
+      // Set default shares based on participant's trip shares
+      const participant = participants.find(p => p.id === participantId);
+      const participantShares = participant?.shares || 1;
+      setTransactionShares(prev => ({
+        ...prev,
+        [participantId]: participantShares
+      }));
     } else {
       setSplitBetween(splitBetween.filter(id => id !== participantId));
+      setTransactionShares(prev => {
+        const newShares = { ...prev };
+        delete newShares[participantId];
+        return newShares;
+      });
     }
   };
 
+  const handleSharesChange = (participantId: string, shares: number) => {
+    setTransactionShares(prev => ({
+      ...prev,
+      [participantId]: shares
+    }));
+  };
+
   const selectAllParticipants = () => {
-    setSplitBetween(participants.map(p => p.id));
+    const allParticipantIds = participants.map(p => p.id);
+    setSplitBetween(allParticipantIds);
+    // Set default shares for all participants
+    const allShares = participants.reduce((acc, p) => {
+      acc[p.id] = p.shares || 1;
+      return acc;
+    }, {} as { [key: string]: number });
+    setTransactionShares(allShares);
   };
 
   const clearAllParticipants = () => {
     setSplitBetween([]);
+    setTransactionShares({});
   };
 
   return (
@@ -195,19 +226,33 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId }: AddE
                 </Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-3">
+            <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
               {participants.map((participant) => (
-                <div key={participant.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`split-${participant.id}`}
-                    checked={splitBetween.includes(participant.id)}
-                    onCheckedChange={(checked) => 
-                      handleSplitChange(participant.id, checked as boolean)
-                    }
-                  />
-                  <Label htmlFor={`split-${participant.id}`} className="text-sm">
-                    {participant.name}
-                  </Label>
+                <div key={participant.id} className="flex items-center justify-between gap-3 p-2 border rounded-md">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Checkbox
+                      id={`split-${participant.id}`}
+                      checked={splitBetween.includes(participant.id)}
+                      onCheckedChange={(checked) => 
+                        handleSplitChange(participant.id, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={`split-${participant.id}`} className="text-sm flex-1">
+                      {participant.name}
+                    </Label>
+                  </div>
+                  {splitBetween.includes(participant.id) && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground">Shares:</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        className="w-16 h-8 text-sm"
+                        value={transactionShares[participant.id] || 1}
+                        onChange={(e) => handleSharesChange(participant.id, parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -34,6 +34,7 @@ export const useExpenses = (tripId: string | null) => {
         amount: expense.amount,
         paidBy: expense.paid_by,
         splitBetween: expense.split_between,
+        transactionShares: expense.transaction_shares as { [participantId: string]: number } | undefined,
         category: expense.category,
         date: expense.date,
         receipt: expense.receipt,
@@ -96,6 +97,7 @@ export const useExpenses = (tripId: string | null) => {
         amount: expenseData.amount,
         paid_by: expenseData.paidBy,
         split_between: expenseData.splitBetween,
+        transaction_shares: expenseData.transactionShares,
         category: expenseData.category,
         date: expenseData.date,
         receipt: expenseData.receipt
@@ -110,6 +112,7 @@ export const useExpenses = (tripId: string | null) => {
             amount: expenseData.amount,
             paid_by: expenseData.paidBy,
             split_between: expenseData.splitBetween,
+            transaction_shares: expenseData.transactionShares,
             category: expenseData.category,
             date: expenseData.date,
             receipt: expenseData.receipt
@@ -138,6 +141,7 @@ export const useExpenses = (tripId: string | null) => {
               amount: expenseData.amount,
               paid_by: expenseData.paidBy,
               split_between: expenseData.splitBetween,
+              transaction_shares: expenseData.transactionShares,
               category: expenseData.category,
               date: expenseData.date,
               receipt: expenseData.receipt
@@ -199,6 +203,7 @@ export const useExpenses = (tripId: string | null) => {
           amount: expenseData.amount,
           paid_by: expenseData.paidBy,
           split_between: expenseData.splitBetween,
+          transaction_shares: expenseData.transactionShares,
           category: expenseData.category,
           date: expenseData.date,
           receipt: expenseData.receipt,

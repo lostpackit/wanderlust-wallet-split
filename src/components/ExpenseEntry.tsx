@@ -27,6 +27,7 @@ const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseE
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [splitBetween, setSplitBetween] = useState<string[]>([]);
+  const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
   const [category, setCategory] = useState('');
   const [expenseDate, setExpenseDate] = useState<Date>(new Date());
 
@@ -55,6 +56,7 @@ const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseE
       amount: parseFloat(amount),
       paidBy,
       splitBetween,
+      transactionShares,
       category: category || 'Other',
       date: expenseDate.toISOString(),
     };
@@ -66,6 +68,7 @@ const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseE
     setAmount('');
     setPaidBy('');
     setSplitBetween([]);
+    setTransactionShares({});
     setCategory('');
     setExpenseDate(new Date());
   };
@@ -73,13 +76,37 @@ const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseE
   const handleSplitToggle = (participantId: string, checked: boolean) => {
     if (checked) {
       setSplitBetween([...splitBetween, participantId]);
+      // Set default shares (assume 1 since ExpenseEntry doesn't have access to participant shares)
+      setTransactionShares(prev => ({
+        ...prev,
+        [participantId]: 1
+      }));
     } else {
       setSplitBetween(splitBetween.filter(id => id !== participantId));
+      setTransactionShares(prev => {
+        const newShares = { ...prev };
+        delete newShares[participantId];
+        return newShares;
+      });
     }
   };
 
+  const handleSharesChange = (participantId: string, shares: number) => {
+    setTransactionShares(prev => ({
+      ...prev,
+      [participantId]: shares
+    }));
+  };
+
   const selectAllParticipants = () => {
-    setSplitBetween(participants.map(p => p.id));
+    const allParticipantIds = participants.map(p => p.id);
+    setSplitBetween(allParticipantIds);
+    // Set default shares for all participants
+    const allShares = participants.reduce((acc, p) => {
+      acc[p.id] = 1; // Default to 1 share since ExpenseEntry doesn't have access to trip shares
+      return acc;
+    }, {} as { [key: string]: number });
+    setTransactionShares(allShares);
   };
 
   const getInitials = (name: string) => {
@@ -220,22 +247,36 @@ const ExpenseEntry = ({ participants, expenses, tripId, onAddExpense }: ExpenseE
               Select All
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+           <div className="space-y-2">
             {participants.map((participant) => (
-              <div key={participant.id} className="flex items-center space-x-3 p-3 bg-white rounded-lg border">
-                <Checkbox
-                  id={participant.id}
-                  checked={splitBetween.includes(participant.id)}
-                  onCheckedChange={(checked) => handleSplitToggle(participant.id, checked as boolean)}
-                />
-                <Avatar className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
-                    {getInitials(participant.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <Label htmlFor={participant.id} className="flex-1 cursor-pointer">
-                  {participant.name}
-                </Label>
+              <div key={participant.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-lg border">
+                <div className="flex items-center space-x-3 flex-1">
+                  <Checkbox
+                    id={participant.id}
+                    checked={splitBetween.includes(participant.id)}
+                    onCheckedChange={(checked) => handleSplitToggle(participant.id, checked as boolean)}
+                  />
+                  <Avatar className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
+                      {getInitials(participant.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Label htmlFor={participant.id} className="flex-1 cursor-pointer">
+                    {participant.name}
+                  </Label>
+                </div>
+                {splitBetween.includes(participant.id) && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-slate-500">Shares:</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      className="w-16 h-8 text-sm"
+                      value={transactionShares[participant.id] || 1}
+                      onChange={(e) => handleSharesChange(participant.id, parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

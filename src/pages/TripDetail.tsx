@@ -346,9 +346,9 @@ const TripDetail = () => {
           <TabsContent value="expenses" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-800">Expenses</h2>
-              <AddExpenseModal 
+               <AddExpenseModal 
                 tripId={tripId!} 
-                participants={participants} 
+                participants={participants as any} 
                 onAddExpense={addExpense} 
                 isLoading={isAddingExpense} 
               />

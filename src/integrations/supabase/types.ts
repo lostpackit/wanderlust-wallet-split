@@ -25,6 +25,7 @@ export type Database = {
           paid_by: string
           receipt: string | null
           split_between: string[]
+          transaction_shares: Json | null
           trip_id: string
           updated_at: string
         }
@@ -38,6 +39,7 @@ export type Database = {
           paid_by: string
           receipt?: string | null
           split_between: string[]
+          transaction_shares?: Json | null
           trip_id: string
           updated_at?: string
         }
@@ -51,6 +53,7 @@ export type Database = {
           paid_by?: string
           receipt?: string | null
           split_between?: string[]
+          transaction_shares?: Json | null
           trip_id?: string
           updated_at?: string
         }

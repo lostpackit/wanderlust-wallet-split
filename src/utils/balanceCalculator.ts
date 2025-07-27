@@ -19,22 +19,46 @@ export const calculateBalances = (
 
   // Process each expense
   expenses.forEach(expense => {
-    const splitAmount = expense.amount / expense.splitBetween.length;
     const paidBy = expense.paidBy;
+    
+    // Calculate shares-based split
+    let totalShares = 0;
+    let splitAmounts: { [participantId: string]: number } = {};
+    
+    if (expense.transactionShares) {
+      // Use transaction-specific shares
+      expense.splitBetween.forEach(participantId => {
+        const shares = expense.transactionShares![participantId] || 1;
+        totalShares += shares;
+      });
+      
+      expense.splitBetween.forEach(participantId => {
+        const shares = expense.transactionShares![participantId] || 1;
+        splitAmounts[participantId] = (expense.amount * shares) / totalShares;
+      });
+    } else {
+      // Fall back to equal split
+      const splitAmount = expense.amount / expense.splitBetween.length;
+      expense.splitBetween.forEach(participantId => {
+        splitAmounts[participantId] = splitAmount;
+      });
+    }
 
     expense.splitBetween.forEach(participantId => {
       if (participantId !== paidBy) {
+        const amountOwed = splitAmounts[participantId];
+        
         // This participant owes money to the person who paid
         if (!balances[participantId].owes[paidBy]) {
           balances[participantId].owes[paidBy] = 0;
         }
-        balances[participantId].owes[paidBy] += splitAmount;
+        balances[participantId].owes[paidBy] += amountOwed;
 
         // The person who paid is owed money by this participant
         if (!balances[paidBy].isOwed[participantId]) {
           balances[paidBy].isOwed[participantId] = 0;
         }
-        balances[paidBy].isOwed[participantId] += splitAmount;
+        balances[paidBy].isOwed[participantId] += amountOwed;
       }
     });
   });

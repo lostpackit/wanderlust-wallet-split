@@ -43,6 +43,7 @@ export interface Expense {
   amount: number;
   paidBy: string; // participant id
   splitBetween: string[]; // array of participant ids
+  transactionShares?: { [participantId: string]: number }; // per-transaction shares
   category: string;
   date: string;
   receipt?: string; // file path or url

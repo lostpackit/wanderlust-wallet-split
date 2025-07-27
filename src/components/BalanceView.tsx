@@ -27,35 +27,50 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
     const totalAdditionalAmounts = participants.reduce((sum, p) => sum + (p.additional_amount || 0), 0);
 
     expenses.forEach(expense => {
-      // Calculate shares-based split with additional amounts consideration
       const participantsInExpense = participants.filter(p => 
         expense.splitBetween.includes(p.id)
       );
       
-      const totalSharesInExpense = participantsInExpense.reduce((sum, p) => 
-        sum + (p.shares || 1), 0
-      );
-      
-      const additionalAmountsInExpense = participantsInExpense.reduce((sum, p) => 
-        sum + (p.additional_amount || 0), 0
-      );
-      
-      // Amount remaining after additional amounts to be split by shares
-      const shareableAmount = expense.amount - additionalAmountsInExpense;
-      
-      // The person who paid gets credited
+      // The person who paid gets credited with full amount
       balances[expense.paidBy] += expense.amount;
       
-      // Everyone who should split it gets debited based on their shares + additional amounts
-      expense.splitBetween.forEach(participantId => {
-        const participant = participants.find(p => p.id === participantId);
-        if (participant && balances.hasOwnProperty(participantId)) {
-          const participantShares = participant.shares || 1;
-          const shareAmount = shareableAmount > 0 ? (shareableAmount * participantShares) / totalSharesInExpense : 0;
-          const additionalAmount = participant.additional_amount || 0;
-          balances[participantId] -= (shareAmount + additionalAmount);
-        }
-      });
+      if (expense.transactionShares) {
+        // Use transaction-specific shares (ignore additional amounts for transaction shares)
+        const totalTransactionShares = participantsInExpense.reduce((sum, p) => 
+          sum + (expense.transactionShares![p.id] || 1), 0
+        );
+        
+        expense.splitBetween.forEach(participantId => {
+          if (balances.hasOwnProperty(participantId)) {
+            const transactionShare = expense.transactionShares![participantId] || 1;
+            const participantShare = expense.amount * transactionShare / totalTransactionShares;
+            balances[participantId] -= participantShare;
+          }
+        });
+      } else {
+        // Use default trip shares with additional amounts
+        const totalSharesInExpense = participantsInExpense.reduce((sum, p) => 
+          sum + (p.shares || 1), 0
+        );
+        
+        const additionalAmountsInExpense = participantsInExpense.reduce((sum, p) => 
+          sum + (p.additional_amount || 0), 0
+        );
+        
+        // Amount remaining after additional amounts to be split by shares
+        const shareableAmount = expense.amount - additionalAmountsInExpense;
+        
+        // Everyone who should split it gets debited based on their shares + additional amounts
+        expense.splitBetween.forEach(participantId => {
+          const participant = participants.find(p => p.id === participantId);
+          if (participant && balances.hasOwnProperty(participantId)) {
+            const participantShares = participant.shares || 1;
+            const shareAmount = shareableAmount > 0 ? (shareableAmount * participantShares) / totalSharesInExpense : 0;
+            const additionalAmount = participant.additional_amount || 0;
+            balances[participantId] -= (shareAmount + additionalAmount);
+          }
+        });
+      }
     });
 
     return balances;
