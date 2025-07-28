@@ -4,18 +4,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Receipt, Users, Scan, Edit, Coins } from "lucide-react";
+import { Trash2, Receipt, Users, Scan, Edit, ArrowRight } from "lucide-react";
 import { Expense, Participant } from '@/types/trip';
 import { format } from 'date-fns';
+
+// Currency symbols mapping
+const CURRENCY_SYMBOLS: { [key: string]: string } = {
+  'USD': '$',
+  'EUR': '€',
+  'GBP': '£',
+  'JPY': '¥',
+  'CAD': 'C$',
+  'AUD': 'A$',
+  'CHF': 'CHF',
+  'CNY': '¥'
+};
 
 interface ExpensesListProps {
   expenses: Expense[];
   participants: (Participant & { role: string })[];
   onDeleteExpense: (expenseId: string) => void;
   isDeleting: boolean;
+  tripBaseCurrency?: string; // Add trip base currency prop
 }
 
-const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: ExpensesListProps) => {
+const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tripBaseCurrency = 'USD' }: ExpensesListProps) => {
   const getParticipantName = (id: string) => {
     const participant = participants.find(p => p.id === id);
     return participant?.name || 'Unknown';
@@ -84,10 +97,11 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                       </>
                     )}
                   </Badge>
-                  {expense.originalCurrency && expense.originalCurrency !== 'USD' && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Coins className="h-3 w-3" />
-                      {expense.originalCurrency}
+                  {expense.originalCurrency && expense.originalCurrency !== tripBaseCurrency && (
+                    <Badge variant="secondary" className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                      <span className="font-medium">{CURRENCY_SYMBOLS[expense.originalCurrency] || expense.originalCurrency}</span>
+                      <ArrowRight className="h-3 w-3" />
+                      <span className="font-medium">{CURRENCY_SYMBOLS[tripBaseCurrency] || tripBaseCurrency}</span>
                     </Badge>
                   )}
                 </div>
@@ -100,7 +114,7 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting }: E
                 <div className="text-2xl font-bold text-green-600">
                   {formatCurrency(expense.amount)}
                 </div>
-                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== 'USD' && (
+                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== tripBaseCurrency && (
                   <div className="text-sm text-muted-foreground">
                     Originally {formatCurrency(expense.originalAmount, expense.originalCurrency)}
                   </div>
