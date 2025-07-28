@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          date: string
+          id: string
+          rate: number
+          target_currency: string
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          date: string
+          id?: string
+          rate: number
+          target_currency: string
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          date?: string
+          id?: string
+          rate?: number
+          target_currency?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
