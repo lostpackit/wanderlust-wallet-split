@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Camera, Upload, Loader2, Crop, Check, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import Cropper from 'react-easy-crop';
-import { Area } from 'react-easy-crop';
+import ReactCrop, { Crop as ReactCropType } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface ReceiptScanResult {
   description: string;
@@ -31,9 +31,9 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   const [showCropper, setShowCropper] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [crop, setCrop] = useState<ReactCropType>({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
+  const [completedCrop, setCompletedCrop] = useState<ReactCropType | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -184,60 +184,61 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
     }
   };
 
-  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  const getCroppedFileFromElement = async (image: HTMLImageElement, crop: ReactCropType): Promise<File> => {
+    const naturalWidth = image.naturalWidth;
+    const naturalHeight = image.naturalHeight;
 
-  const createImage = (url: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener('load', () => resolve(image));
-      image.addEventListener('error', (error) => reject(error));
-      image.src = url;
-    });
-  };
+    const cropX = crop.unit === '%' ? (crop.x! / 100) * naturalWidth : (crop.x || 0);
+    const cropY = crop.unit === '%' ? (crop.y! / 100) * naturalHeight : (crop.y || 0);
+    const cropW = crop.unit === '%' ? (crop.width! / 100) * naturalWidth : (crop.width || naturalWidth);
+    const cropH = crop.unit === '%' ? (crop.height! / 100) * naturalHeight : (crop.height || naturalHeight);
 
-  const getCroppedImage = async (imageSrc: string, pixelCrop: Area): Promise<File> => {
-    const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(cropW));
+    canvas.height = Math.max(1, Math.round(cropH));
     const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      throw new Error('Failed to get canvas context');
-    }
-
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    if (!ctx) throw new Error('Failed to get canvas context');
 
     ctx.drawImage(
       image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropW),
+      Math.round(cropH),
       0,
       0,
-      pixelCrop.width,
-      pixelCrop.height
+      Math.round(cropW),
+      Math.round(cropH)
     );
 
+    // Convert to grayscale to reduce size
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      data[i] = gray;
+      data[i + 1] = gray;
+      data[i + 2] = gray;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
     return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          reject(new Error('Failed to create blob'));
-          return;
-        }
-        const file = new File([blob], 'cropped-receipt.jpg', { type: 'image/jpeg' });
-        resolve(file);
-      }, 'image/jpeg', 0.95);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error('Failed to create blob'));
+          resolve(new File([blob], 'cropped-receipt.jpg', { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        0.9
+      );
     });
   };
 
   const handleCropAndScan = async () => {
-    if (!croppedAreaPixels || !scanPreview) return;
+    if (!completedCrop || !imageRef.current) return;
     
     try {
-      const croppedFile = await getCroppedImage(scanPreview, croppedAreaPixels);
+      const croppedFile = await getCroppedFileFromElement(imageRef.current, completedCrop);
       setShowCropper(false);
       setShowPreview(false);
       await scanReceipt(croppedFile);
@@ -250,7 +251,6 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
       });
     }
   };
-
   const handleDirectScan = async () => {
     if (!selectedFile) return;
     setShowPreview(false);
@@ -325,28 +325,10 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
               </p>
             </div>
             
-            <div className="relative w-full h-64 bg-gray-100 rounded">
-              <Cropper
-                image={scanPreview}
-                crop={crop}
-                zoom={zoom}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Zoom</label>
-              <input
-                type="range"
-                value={zoom}
-                min={1}
-                max={3}
-                step={0.1}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full"
-              />
+            <div className="relative w-full bg-muted rounded p-2">
+              <ReactCrop crop={crop} onChange={setCrop} onComplete={(c) => setCompletedCrop(c)} keepSelection>
+                <img ref={imageRef} src={scanPreview} alt="Crop source" className="max-h-72 mx-auto" />
+              </ReactCrop>
             </div>
             
             <div className="flex gap-3 justify-center">
