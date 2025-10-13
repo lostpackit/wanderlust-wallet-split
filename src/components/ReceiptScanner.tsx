@@ -330,7 +330,6 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
                 image={scanPreview}
                 crop={crop}
                 zoom={zoom}
-                aspect={3 / 4}
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
