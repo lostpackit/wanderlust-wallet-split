@@ -79,11 +79,10 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense
     <>
       <div className="space-y-4">
         {expenses.map((expense) => (
-          <Card 
-            key={expense.id} 
-            className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-            onClick={() => setEditingExpense(expense)}
-          >
+          <div key={expense.id} onClick={() => setEditingExpense(expense)}>
+            <Card 
+              className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+            >
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -214,6 +213,7 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense
             </div>
           </CardContent>
         </Card>
+      </div>
       ))}
     </div>
 
