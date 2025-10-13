@@ -20,6 +20,7 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
   const [email, setEmail] = useState('');
   const [shares, setShares] = useState('1');
   const [tab, setTab] = useState<'search' | 'manual'>('search');
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +39,20 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
   };
 
   const handleSelectUser = (user: UserProfile) => {
+    setSelectedUser(user);
+  };
+
+  const handleAddSelectedUser = () => {
+    if (!selectedUser) return;
     const sharesNum = parseInt(shares) || 1;
     onAddParticipant({
-      name: user.full_name || user.email,
-      email: user.email,
-      userId: user.id,
+      name: selectedUser.full_name || selectedUser.email,
+      email: selectedUser.email,
+      userId: selectedUser.id,
       shares: sharesNum,
     });
     setShares('1');
+    setSelectedUser(null);
     setOpen(false);
   };
 
@@ -85,7 +92,15 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
               <div className="space-y-2">
                 <Label>Find existing users</Label>
                 <UserSearchInput onSelectUser={handleSelectUser} />
-                <p className="text-xs text-slate-500">Tap a user below to add them immediately.</p>
+                {selectedUser && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm font-medium text-green-900">
+                      Selected: {selectedUser.full_name || selectedUser.email}
+                    </p>
+                    <p className="text-xs text-green-700">{selectedUser.email}</p>
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">Search and select a user, then adjust shares and click Add.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="search-shares">Shares (people they represent)</Label>
@@ -111,8 +126,8 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="button" onClick={() => setTab('manual')}>
-                Add Manually
+              <Button type="button" onClick={handleAddSelectedUser} disabled={!selectedUser || isLoading}>
+                {isLoading ? 'Adding...' : 'Add User'}
               </Button>
             </div>
           </TabsContent>
