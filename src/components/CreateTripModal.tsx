@@ -94,7 +94,7 @@ const CreateTripModal = ({ onCreateTrip }: CreateTripModalProps) => {
       <DialogTrigger asChild>
         <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
           <PlusCircle className="w-4 h-4 mr-2" />
-          Create New Trip
+          New Trip
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

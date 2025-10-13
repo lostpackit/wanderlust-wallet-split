@@ -66,18 +66,18 @@ const Index = () => {
 
   // Dashboard view for authenticated users
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center sm:flex-wrap gap-4 mb-8">
           <div className="text-center sm:text-left space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-slate-800">Wanderlust Wallet</h1>
             <p className="text-slate-600 text-base sm:text-lg">Welcome back, {user.email}!</p>
           </div>
-          <div className="flex items-center gap-2 justify-center sm:justify-end flex-shrink-0">
+          <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap max-w-full">
             <CreateTripModal onCreateTrip={createTrip} />
-            <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2 whitespace-nowrap">
+            <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2">
               <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Profile</span>
+              <span className="hidden md:inline">Profile</span>
             </Button>
           </div>
         </div>
