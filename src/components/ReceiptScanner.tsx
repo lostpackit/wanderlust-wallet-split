@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, Upload, Loader2, Crop, SkipForward } from "lucide-react";
+import { Camera, Upload, Loader2, Crop, Check, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Cropper from 'react-easy-crop';
@@ -29,6 +29,7 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   const [isScanning, setIsScanning] = useState(false);
   const [scanPreview, setScanPreview] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -125,7 +126,6 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
 
   const scanReceipt = async (file: File) => {
     setIsScanning(true);
-    setScanPreview(URL.createObjectURL(file));
 
     try {
       console.log('Starting receipt scan...');
@@ -156,14 +156,17 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
       }
 
       console.log('Receipt scan successful:', data.data);
-      
+
       toast({
         title: "Receipt Scanned Successfully",
         description: `Found: ${data.data.description} - ${baseCurrency} ${data.data.amount.toFixed(2)}`,
       });
 
-      // Clean up preview
+      // Clean up and reset state
       setScanPreview(null);
+      setShowPreview(false);
+      setShowCropper(false);
+      setSelectedFile(null);
       
       // Pass the extracted data to the parent component
       onScanComplete(data.data);
@@ -236,6 +239,7 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
     try {
       const croppedFile = await getCroppedImage(scanPreview, croppedAreaPixels);
       setShowCropper(false);
+      setShowPreview(false);
       await scanReceipt(croppedFile);
     } catch (error) {
       console.error('Cropping error:', error);
@@ -247,10 +251,27 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
     }
   };
 
-  const handleSkipCropping = async () => {
+  const handleDirectScan = async () => {
     if (!selectedFile) return;
-    setShowCropper(false);
+    setShowPreview(false);
     await scanReceipt(selectedFile);
+  };
+
+  const handleRetake = () => {
+    setScanPreview(null);
+    setShowPreview(false);
+    setShowCropper(false);
+    setSelectedFile(null);
+  };
+
+  const handleStartCrop = () => {
+    setShowPreview(false);
+    setShowCropper(true);
+  };
+
+  const handleCancelCrop = () => {
+    setShowCropper(false);
+    setShowPreview(true);
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,10 +298,11 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
       return;
     }
 
-    // Show cropper instead of scanning immediately
+    // Show preview instead of scanning immediately
     setSelectedFile(file);
     setScanPreview(URL.createObjectURL(file));
-    setShowCropper(true);
+    setShowPreview(true);
+    setShowCropper(false);
   };
 
   const openFileDialog = () => {
@@ -297,9 +319,9 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
         {showCropper && scanPreview ? (
           <div className="space-y-4">
             <div className="text-center mb-2">
-              <h3 className="text-lg font-medium">Crop Receipt (Optional)</h3>
+              <h3 className="text-lg font-medium">Crop Receipt</h3>
               <p className="text-sm text-muted-foreground">
-                Crop to just the receipt for better accuracy
+                Adjust to focus on just the receipt
               </p>
             </div>
             
@@ -331,12 +353,12 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
             <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
-                onClick={handleSkipCropping}
+                onClick={handleCancelCrop}
                 disabled={isScanning}
                 className="flex items-center gap-2"
               >
-                <SkipForward className="w-4 h-4" />
-                Skip Cropping
+                <X className="w-4 h-4" />
+                Cancel
               </Button>
               
               <Button
@@ -347,10 +369,63 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
                 {isScanning ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Crop className="w-4 h-4" />
+                  <Check className="w-4 h-4" />
                 )}
-                {isScanning ? 'Scanning...' : 'Crop & Scan'}
+                {isScanning ? 'Scanning...' : 'Confirm & Scan'}
               </Button>
+            </div>
+          </div>
+        ) : showPreview && scanPreview ? (
+          <div className="space-y-4">
+            <div className="text-center mb-2">
+              <h3 className="text-lg font-medium">Review Photo</h3>
+            </div>
+            
+            <div className="flex justify-center">
+              <img 
+                src={scanPreview} 
+                alt="Receipt preview" 
+                className="max-h-64 object-contain rounded border"
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={handleRetake}
+                disabled={isScanning}
+                className="flex items-center gap-2"
+                size="lg"
+              >
+                <Trash2 className="w-5 h-5" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleStartCrop}
+                disabled={isScanning}
+                className="flex items-center gap-2"
+                size="lg"
+              >
+                <Crop className="w-5 h-5" />
+              </Button>
+              
+              <Button
+                onClick={handleDirectScan}
+                disabled={isScanning}
+                className="flex items-center gap-2"
+                size="lg"
+              >
+                {isScanning ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5" />
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground text-center">
+              Trash: Retake • Crop: Adjust area • Check: Scan now
             </div>
           </div>
         ) : (
