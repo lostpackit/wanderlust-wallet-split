@@ -63,25 +63,6 @@ interface ReceiptData {
 }
 
 class ReceiptParser {
-  // Normalize numbers with either comma or dot decimals and thousand separators
-  static normalizeAmount(input: string): number {
-    const s = input.replace(/\s/g, '');
-    const lastDot = s.lastIndexOf('.');
-    const lastComma = s.lastIndexOf(',');
-    let decSep = '.';
-    if (lastComma > lastDot) decSep = ',';
-    // Remove all separators, then reinsert dot as decimal
-    const cleaned = s.replace(/[.,]/g, '');
-    if (decSep === ',') {
-      // Put dot before last two digits
-      const withDot = cleaned.replace(/(\d{2})$/, '.$1');
-      return parseFloat(withDot);
-    } else {
-      const withDot = cleaned.replace(/(\d{2})$/, '.$1');
-      return parseFloat(withDot);
-    }
-  }
-
   static parse(text: string): ReceiptData {
     console.log('Parsing receipt text:', text);
     
@@ -91,8 +72,8 @@ class ReceiptParser {
     
     // Look for total amount patterns first (more reliable)
     const totalPatterns = [
-      /(?:total|amount\s+due|grand\s+total|final\s+total|sum|gesamt|summe|totale|montant\s+total|importe\s+total|total\s*a\s*pagar|total\s*ttc|total\s*ht)\s*:?[\s-]*([\$|€|£|¥|USD|EUR|GBP|JPY])?\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/gi,
-      /([\$|€|£|¥|USD|EUR|GBP|JPY])\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))\s*(?:total|amount\s+due|grand\s+total|gesamt|summe|totale|montant\s+total|importe\s+total)/gi
+      /(?:total|amount\s+due|grand\s+total|final\s+total|sum)\s*:?\s*(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*(\d+[.,]\d{2})/gi,
+      /(\$|€|£|¥|USD|EUR|GBP|JPY)\s*(\d+[.,]\d{2})\s*(?:total|amount\s+due|grand\s+total)/gi
     ];
     
     let foundTotal = false;
@@ -100,9 +81,9 @@ class ReceiptParser {
       const matches = text.match(pattern);
       if (matches && matches.length > 0) {
         const totalMatch = matches[matches.length - 1]; // Take the last match (usually the final total)
-        const numberMatch = totalMatch.match(/([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/);
+        const numberMatch = totalMatch.match(/(\d+[.,]\d{2})/);
         if (numberMatch) {
-          amount = ReceiptParser.normalizeAmount(numberMatch[1]);
+          amount = parseFloat(numberMatch[1].replace(',', '.'));
           foundTotal = true;
           
           // Extract currency from total line
@@ -117,16 +98,16 @@ class ReceiptParser {
     
     // Fallback to general amount detection if no total found
     if (!foundTotal) {
-      const amountMatches = text.match(/(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/gi) || [];
+      const amountMatches = text.match(/(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*(\d+[.,]\d{2})/gi) || [];
       if (amountMatches.length > 0) {
         // Take the largest amount found (likely to be the total)
         let maxAmount = 0;
         let maxAmountStr = '';
         
         for (const amountStr of amountMatches) {
-          const numberMatch = amountStr.match(/([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/);
+          const numberMatch = amountStr.match(/(\d+[.,]\d{2})/);
           if (numberMatch) {
-            const currentAmount = ReceiptParser.normalizeAmount(numberMatch[1]);
+            const currentAmount = parseFloat(numberMatch[1].replace(',', '.'));
             if (currentAmount > maxAmount) {
               maxAmount = currentAmount;
               maxAmountStr = amountStr;
@@ -145,75 +126,43 @@ class ReceiptParser {
       }
     }
 
-    // Extract vendor name with better heuristics
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // Extract vendor name - look for business names and clean up
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
     let vendor = 'Unknown Vendor';
     
     if (lines.length > 0) {
-      const skipRe = /(receipt|invoice|order|subtotal|total|amount\s+due|grand\s+total|tax|vat|tva|mwst|adresse|address|tel|phone|fax|www|http|qty|item|cashier|terminal|merchant id|vat number|siren|siret|thank|merci|gracias)/i;
-      const clean = (s: string) => s
-        .replace(/[*#@_=<>\[\]{}|\\/]+/g, '')
-        .replace(/\s+/g, ' ')
-        .replace(/[^A-Za-z0-9 &.'\-]/g, '')
-        .trim();
-      const isLikelyVendor = (s: string) => {
-        const lower = s.toLowerCase();
-        if (skipRe.test(lower)) return false;
-        if (s.length < 3 || s.length > 60) return false;
-        const letters = (s.match(/[A-Za-z]/g) || []).length;
-        const digits = (s.match(/\d/g) || []).length;
-        if (letters < 3) return false;
-        if (digits > letters) return false;
-        return true;
-      };
-
-      // 1) Explicit labels
-      for (const line of lines.slice(0, 15)) {
-        const m = line.match(/^(merchant|store|vendor|business|shop)[:\-\s]+(.{3,60})$/i);
-        if (m) {
-          const candidate = clean(m[2]);
-          if (isLikelyVendor(candidate)) {
-            vendor = candidate;
-            break;
-          }
+      // Look for the most likely vendor name in first few lines
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        const line = lines[i].trim();
+        
+        // Skip common receipt headers/artifacts
+        if (line.match(/^\d+$/) || // Just numbers
+            line.match(/^[\*#@\-=\s]+$/) || // Just symbols
+            line.toLowerCase().includes('receipt') ||
+            line.toLowerCase().includes('invoice') ||
+            line.toLowerCase().includes('order') ||
+            line.length < 3) {
+          continue;
+        }
+        
+        // Clean up the line
+        let cleanLine = line
+          .replace(/[*#@]+/g, '') // Remove symbols
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+        
+        if (cleanLine.length >= 3 && cleanLine.length <= 50) {
+          vendor = cleanLine;
+          break;
         }
       }
-
-      // 2) First 12 lines best candidate
-      if (vendor === 'Unknown Vendor') {
-        let best = '';
-        let bestScore = 0;
-        const window = lines.slice(0, Math.min(12, lines.length));
-        for (const line of window) {
-          const c = clean(line);
-          if (!isLikelyVendor(c)) continue;
-          const score = (c.match(/[A-Za-z]/g) || []).length - (c.match(/\d/g) || []).length;
-          if (score > bestScore) { bestScore = score; best = c; }
-        }
-        if (best) vendor = best;
-      }
-
-      // 3) Lines before total section
-      if (vendor === 'Unknown Vendor') {
-        const totalIdx = lines.findIndex(l => /(total|amount\s+due|grand\s+total)/i.test(l));
-        if (totalIdx > 1) {
-          let best = '';
-          let bestScore = 0;
-          const window = lines.slice(Math.max(0, totalIdx - 10), totalIdx);
-          for (const line of window) {
-            const c = clean(line);
-            if (!isLikelyVendor(c)) continue;
-            const score = (c.match(/[A-Za-z]/g) || []).length - (c.match(/\d/g) || []).length;
-            if (score > bestScore) { bestScore = score; best = c; }
-          }
-          if (best) vendor = best;
-        }
-      }
-
-      // 4) Fallback to first substantial line
+      
+      // If vendor is still unknown, take the first substantial line
       if (vendor === 'Unknown Vendor' && lines[0]) {
-        const c = clean(lines[0]);
-        if (isLikelyVendor(c)) vendor = c.substring(0, 60);
+        vendor = lines[0]
+          .replace(/[*#@]+/g, '')
+          .trim()
+          .substring(0, 50);
       }
     }
 
@@ -432,14 +381,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Receipt scanning error:', error);
-    // Return 200 with success:false to avoid SDK non-2xx errors on client
-    const message = error instanceof Error ? error.message : 'Failed to process receipt';
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: message 
+        error: error.message || 'Failed to process receipt' 
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
