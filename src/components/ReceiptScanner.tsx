@@ -30,6 +30,62 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions to keep file under 1MB
+          const MAX_WIDTH = 1600;
+          const MAX_HEIGHT = 1600;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error('Failed to compress image'));
+              }
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -50,7 +106,16 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
 
     try {
       console.log('Starting receipt scan...');
-      const base64Image = await convertToBase64(file);
+      
+      // Compress image if it's too large
+      let processedFile = file;
+      if (file.size > 800 * 1024) { // If larger than 800KB, compress
+        console.log('Compressing image from', file.size, 'bytes');
+        processedFile = await compressImage(file);
+        console.log('Compressed to', processedFile.size, 'bytes');
+      }
+      
+      const base64Image = await convertToBase64(processedFile);
 
       const { data, error } = await supabase.functions.invoke('scan-receipt', {
         body: {
