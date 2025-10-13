@@ -18,31 +18,33 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [shares, setShares] = useState(1);
+  const [shares, setShares] = useState('1');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && email.trim() && shares >= 1) {
+    const sharesNum = parseInt(shares) || 1;
+    if (name.trim() && email.trim() && sharesNum >= 1) {
       onAddParticipant({ 
         name: name.trim(), 
         email: email.trim(), 
-        shares: shares 
+        shares: sharesNum 
       });
       setName('');
       setEmail('');
-      setShares(1);
+      setShares('1');
       setOpen(false);
     }
   };
 
   const handleSelectUser = (user: UserProfile) => {
+    const sharesNum = parseInt(shares) || 1;
     onAddParticipant({
       name: user.full_name || user.email,
       email: user.email,
       userId: user.id,
-      shares: shares,
+      shares: sharesNum,
     });
-    setShares(1);
+    setShares('1');
     setOpen(false);
   };
 
@@ -88,8 +90,13 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
                 id="search-shares"
                 type="number"
                 min="1"
+                inputMode="numeric"
                 value={shares}
-                onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => setShares(e.target.value)}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value);
+                  setShares(val >= 1 ? val.toString() : '1');
+                }}
                 placeholder="Number of shares"
               />
               <p className="text-xs text-slate-500">
@@ -128,8 +135,13 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
                   id="participant-shares"
                   type="number"
                   min="1"
+                  inputMode="numeric"
                   value={shares}
-                  onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => setShares(e.target.value)}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value);
+                    setShares(val >= 1 ? val.toString() : '1');
+                  }}
                   placeholder="Number of shares"
                 />
                 <p className="text-xs text-slate-500">
