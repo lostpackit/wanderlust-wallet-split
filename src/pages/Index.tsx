@@ -7,6 +7,7 @@ import UserDashboard from "@/components/UserDashboard";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useTrips } from "@/hooks/useTrips";
 import CreateTripModal from "@/components/CreateTripModal";
+import QuickAddExpenseModal from "@/components/QuickAddExpenseModal";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 
@@ -75,6 +76,9 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap max-w-full">
             <CreateTripModal onCreateTrip={createTrip} />
+            {dashboardData.dashboardData && (
+              <QuickAddExpenseModal activeTrips={dashboardData.dashboardData.activeTrips} />
+            )}
             <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden md:inline">Profile</span>
