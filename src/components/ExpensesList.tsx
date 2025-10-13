@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Receipt, Users, Scan, Edit, ArrowRight } from "lucide-react";
-import { Expense, Participant } from '@/types/trip';
+import { Trash2, Receipt, Users, Scan, Edit, ArrowRight, Pencil } from "lucide-react";
+import { Expense, Participant, ParticipantWithShares } from '@/types/trip';
 import { format } from 'date-fns';
+import EditExpenseModal from './EditExpenseModal';
 
 // Currency symbols mapping
 const CURRENCY_SYMBOLS: { [key: string]: string } = {
@@ -22,13 +23,17 @@ const CURRENCY_SYMBOLS: { [key: string]: string } = {
 
 interface ExpensesListProps {
   expenses: Expense[];
-  participants: (Participant & { role: string })[];
+  participants: ParticipantWithShares[];
   onDeleteExpense: (expenseId: string) => void;
+  onUpdateExpense: (expenseId: string, expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
   isDeleting: boolean;
-  tripBaseCurrency?: string; // Add trip base currency prop
+  isUpdating: boolean;
+  tripBaseCurrency?: string;
 }
 
-const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tripBaseCurrency = 'USD' }: ExpensesListProps) => {
+const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense, isDeleting, isUpdating, tripBaseCurrency = 'USD' }: ExpensesListProps) => {
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
   const getParticipantName = (id: string) => {
     const participant = participants.find(p => p.id === id);
     return participant?.name || 'Unknown';
@@ -48,12 +53,10 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tri
 
   const calculateParticipantShare = (expense: Expense, participantId: string) => {
     if (expense.transactionShares) {
-      // Use transaction-specific shares
       const totalShares = Object.values(expense.transactionShares).reduce((sum, shares) => sum + shares, 0);
       const participantShares = expense.transactionShares[participantId] || 0;
       return expense.amount * participantShares / totalShares;
     } else {
-      // Fall back to equal split
       return expense.amount / expense.splitBetween.length;
     }
   };
@@ -73,9 +76,14 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tri
   }
 
   return (
-    <div className="space-y-4">
-      {expenses.map((expense) => (
-        <Card key={expense.id}>
+    <>
+      <div className="space-y-4">
+        {expenses.map((expense) => (
+          <Card 
+            key={expense.id} 
+            className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+            onClick={() => setEditingExpense(expense)}
+          >
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -110,24 +118,42 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tri
                   <Badge variant="secondary">{expense.category}</Badge>
                 </CardDescription>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(expense.amount)}
-                </div>
-                {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== tripBaseCurrency && (
-                  <div className="text-sm text-muted-foreground">
-                    Originally {formatCurrency(expense.originalAmount, expense.originalCurrency)}
+              <div className="text-right flex items-start gap-2">
+                <div className="flex-1">
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(expense.amount)}
                   </div>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeleteExpense(expense.id)}
-                  disabled={isDeleting}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  {expense.originalCurrency && expense.originalAmount && expense.originalCurrency !== tripBaseCurrency && (
+                    <div className="text-sm text-muted-foreground">
+                      Originally {formatCurrency(expense.originalAmount, expense.originalCurrency)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingExpense(expense);
+                    }}
+                    className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteExpense(expense.id);
+                    }}
+                    disabled={isDeleting}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -190,6 +216,19 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, isDeleting, tri
         </Card>
       ))}
     </div>
+
+    {editingExpense && (
+      <EditExpenseModal
+        expense={editingExpense}
+        participants={participants}
+        onUpdateExpense={onUpdateExpense}
+        isLoading={isUpdating}
+        open={!!editingExpense}
+        onOpenChange={(open) => !open && setEditingExpense(null)}
+        baseCurrency={tripBaseCurrency}
+      />
+    )}
+  </>
   );
 };
 

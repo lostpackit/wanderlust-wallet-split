@@ -38,6 +38,11 @@ export const useExpenses = (tripId: string | null) => {
         category: expense.category,
         date: expense.date,
         receipt: expense.receipt,
+        originalCurrency: expense.original_currency,
+        originalAmount: expense.original_amount,
+        exchangeRate: expense.exchange_rate,
+        receiptData: expense.receipt_data,
+        expenseSource: expense.expense_source as 'manual' | 'scanned_receipt',
         createdAt: expense.created_at,
         updatedAt: expense.updated_at,
       }));
@@ -115,7 +120,12 @@ export const useExpenses = (tripId: string | null) => {
             transaction_shares: expenseData.transactionShares,
             category: expenseData.category,
             date: expenseData.date,
-            receipt: expenseData.receipt
+            receipt: expenseData.receipt,
+            original_currency: expenseData.originalCurrency,
+            original_amount: expenseData.originalAmount,
+            exchange_rate: expenseData.exchangeRate,
+            receipt_data: expenseData.receiptData,
+            expense_source: expenseData.expenseSource,
           }])
           .select()
           .single();
@@ -207,6 +217,11 @@ export const useExpenses = (tripId: string | null) => {
           category: expenseData.category,
           date: expenseData.date,
           receipt: expenseData.receipt,
+          original_currency: expenseData.originalCurrency,
+          original_amount: expenseData.originalAmount,
+          exchange_rate: expenseData.exchangeRate,
+          receipt_data: expenseData.receiptData,
+          expense_source: expenseData.expenseSource,
         })
         .eq('id', id)
         .select()

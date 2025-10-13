@@ -17,6 +17,16 @@ interface ExpenseFormProps {
   isLoading: boolean;
   tripId: string;
   baseCurrency?: string;
+  initialValues?: {
+    description?: string;
+    amount?: string;
+    paidBy?: string;
+    splitBetween?: string[];
+    transactionShares?: { [participantId: string]: number };
+    category?: string;
+    date?: string;
+    expenseCurrency?: string;
+  };
 }
 
 const categories = [
@@ -51,15 +61,15 @@ const currencies = [
   { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint' }
 ];
 
-const ExpenseForm = ({ participants, onSubmit, onCancel, isLoading, tripId, baseCurrency = 'USD' }: ExpenseFormProps) => {
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [paidBy, setPaidBy] = useState('');
-  const [splitBetween, setSplitBetween] = useState<string[]>([]);
-  const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>({});
-  const [category, setCategory] = useState('Other');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [expenseCurrency, setExpenseCurrency] = useState(baseCurrency);
+const ExpenseForm = ({ participants, onSubmit, onCancel, isLoading, tripId, baseCurrency = 'USD', initialValues }: ExpenseFormProps) => {
+  const [description, setDescription] = useState(initialValues?.description || '');
+  const [amount, setAmount] = useState(initialValues?.amount || '');
+  const [paidBy, setPaidBy] = useState(initialValues?.paidBy || '');
+  const [splitBetween, setSplitBetween] = useState<string[]>(initialValues?.splitBetween || []);
+  const [transactionShares, setTransactionShares] = useState<{ [participantId: string]: number }>(initialValues?.transactionShares || {});
+  const [category, setCategory] = useState(initialValues?.category || 'Other');
+  const [date, setDate] = useState(initialValues?.date || new Date().toISOString().split('T')[0]);
+  const [expenseCurrency, setExpenseCurrency] = useState(initialValues?.expenseCurrency || baseCurrency);
   const [originalCurrency, setOriginalCurrency] = useState<string | undefined>();
   const [originalAmount, setOriginalAmount] = useState<number | undefined>();
   const [exchangeRate, setExchangeRate] = useState<number | undefined>();

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard } from "lucide-react";
+import { Expense } from '@/types/trip';
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -65,7 +66,9 @@ const TripDetail = () => {
   } = useParticipants(tripId);
   const { 
     addExpense, 
-    isAddingExpense, 
+    isAddingExpense,
+    updateExpense,
+    isUpdatingExpense,
     deleteExpense, 
     isDeletingExpense 
   } = useExpenses(tripId);
@@ -139,9 +142,13 @@ const TripDetail = () => {
   const handleRemoveParticipant = (participantId: string) => {
     removeParticipant(participantId);
   };
-
+  
   const handleDeleteExpense = (expenseId: string) => {
     deleteExpense(expenseId);
+  };
+
+  const handleUpdateExpense = (expenseId: string, expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+    updateExpense({ id: expenseId, ...expenseData });
   };
 
   // Calculate totals for display
@@ -358,7 +365,9 @@ const TripDetail = () => {
               expenses={expenses}
               participants={participants}
               onDeleteExpense={handleDeleteExpense}
+              onUpdateExpense={handleUpdateExpense}
               isDeleting={isDeletingExpense}
+              isUpdating={isUpdatingExpense}
               tripBaseCurrency={trip?.baseCurrency || 'USD'}
             />
           </TabsContent>

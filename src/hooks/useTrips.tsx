@@ -288,7 +288,7 @@ export const useTripData = (tripId: string | null) => {
       // Get trip participants with shares - using separate queries to avoid relationship ambiguity
       const { data: tripParticipants, error: tpError } = await supabase
         .from('trip_participants')
-        .select('participant_id, role, shares')
+        .select('participant_id, role, shares, additional_amount')
         .eq('trip_id', tripId);
 
       if (tpError) {
@@ -306,6 +306,8 @@ export const useTripData = (tripId: string | null) => {
             email: user.email || '',
             role: 'admin',
             user_id: user.id,
+            shares: 1,
+            additional_amount: 0,
           }];
         }
         return [];
@@ -330,6 +332,7 @@ export const useTripData = (tripId: string | null) => {
           ...participant,
           role: tp.role,
           shares: tp.shares || 1,
+          additional_amount: tp.additional_amount || 0,
         } : null;
       }).filter(Boolean);
 
@@ -362,9 +365,15 @@ export const useTripData = (tripId: string | null) => {
         amount: expense.amount,
         paidBy: expense.paid_by,
         splitBetween: expense.split_between,
+        transactionShares: expense.transaction_shares as { [participantId: string]: number } | undefined,
         category: expense.category,
         date: expense.date,
         receipt: expense.receipt,
+        originalCurrency: expense.original_currency,
+        originalAmount: expense.original_amount,
+        exchangeRate: expense.exchange_rate,
+        receiptData: expense.receipt_data,
+        expenseSource: expense.expense_source as 'manual' | 'scanned_receipt',
         createdAt: expense.created_at,
         updatedAt: expense.updated_at,
       }));
