@@ -27,6 +27,7 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   const [isScanning, setIsScanning] = useState(false);
   const [scanPreview, setScanPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const convertToBase64 = (file: File): Promise<string> => {
@@ -124,12 +125,7 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   };
 
   const openCamera = () => {
-    // For now, open file dialog - in future could implement camera capture
-    toast({
-      title: "Camera Feature",
-      description: "Camera capture coming soon! Please use file upload for now.",
-    });
-    openFileDialog();
+    cameraInputRef.current?.click();
   };
 
   return (
@@ -183,6 +179,15 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
             onChange={handleFileSelect}
             className="hidden"
           />
