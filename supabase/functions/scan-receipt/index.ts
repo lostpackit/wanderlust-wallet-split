@@ -24,7 +24,7 @@ class OCRSpaceProvider implements OCRProvider {
     
     const formData = new FormData();
     formData.append('base64Image', imageData);
-    formData.append('language', 'eng');
+    formData.append('language', 'eng,spa,fre,deu,ita,por,nld');
     formData.append('detectOrientation', 'true');
     formData.append('scale', 'true');
     formData.append('OCREngine', '2'); // Use OCR Engine 2 for better accuracy
@@ -63,6 +63,25 @@ interface ReceiptData {
 }
 
 class ReceiptParser {
+  // Normalize numbers with either comma or dot decimals and thousand separators
+  static normalizeAmount(input: string): number {
+    const s = input.replace(/\s/g, '');
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    let decSep = '.';
+    if (lastComma > lastDot) decSep = ',';
+    // Remove all separators, then reinsert dot as decimal
+    const cleaned = s.replace(/[.,]/g, '');
+    if (decSep === ',') {
+      // Put dot before last two digits
+      const withDot = cleaned.replace(/(\d{2})$/, '.$1');
+      return parseFloat(withDot);
+    } else {
+      const withDot = cleaned.replace(/(\d{2})$/, '.$1');
+      return parseFloat(withDot);
+    }
+  }
+
   static parse(text: string): ReceiptData {
     console.log('Parsing receipt text:', text);
     
@@ -72,8 +91,8 @@ class ReceiptParser {
     
     // Look for total amount patterns first (more reliable)
     const totalPatterns = [
-      /(?:total|amount\s+due|grand\s+total|final\s+total|sum)\s*:?\s*(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*(\d+[.,]\d{2})/gi,
-      /(\$|€|£|¥|USD|EUR|GBP|JPY)\s*(\d+[.,]\d{2})\s*(?:total|amount\s+due|grand\s+total)/gi
+      /(?:total|amount\s+due|grand\s+total|final\s+total|sum|gesamt|summe|totale|montant\s+total|importe\s+total|total\s*a\s*pagar|total\s*ttc|total\s*ht)\s*:?[\s-]*([\$|€|£|¥|USD|EUR|GBP|JPY])?\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/gi,
+      /([\$|€|£|¥|USD|EUR|GBP|JPY])\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))\s*(?:total|amount\s+due|grand\s+total|gesamt|summe|totale|montant\s+total|importe\s+total)/gi
     ];
     
     let foundTotal = false;
@@ -81,9 +100,9 @@ class ReceiptParser {
       const matches = text.match(pattern);
       if (matches && matches.length > 0) {
         const totalMatch = matches[matches.length - 1]; // Take the last match (usually the final total)
-        const numberMatch = totalMatch.match(/(\d+[.,]\d{2})/);
+        const numberMatch = totalMatch.match(/([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/);
         if (numberMatch) {
-          amount = parseFloat(numberMatch[1].replace(',', '.'));
+          amount = ReceiptParser.normalizeAmount(numberMatch[1]);
           foundTotal = true;
           
           // Extract currency from total line
@@ -98,16 +117,16 @@ class ReceiptParser {
     
     // Fallback to general amount detection if no total found
     if (!foundTotal) {
-      const amountMatches = text.match(/(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*(\d+[.,]\d{2})/gi) || [];
+      const amountMatches = text.match(/(\$|€|£|¥|USD|EUR|GBP|JPY)?\s*([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/gi) || [];
       if (amountMatches.length > 0) {
         // Take the largest amount found (likely to be the total)
         let maxAmount = 0;
         let maxAmountStr = '';
         
         for (const amountStr of amountMatches) {
-          const numberMatch = amountStr.match(/(\d+[.,]\d{2})/);
+          const numberMatch = amountStr.match(/([0-9]+(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))/);
           if (numberMatch) {
-            const currentAmount = parseFloat(numberMatch[1].replace(',', '.'));
+            const currentAmount = ReceiptParser.normalizeAmount(numberMatch[1]);
             if (currentAmount > maxAmount) {
               maxAmount = currentAmount;
               maxAmountStr = amountStr;
