@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, Upload, Loader2 } from "lucide-react";
+import { Camera, Upload, Loader2, Crop, SkipForward } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import Cropper from 'react-easy-crop';
+import { Area } from 'react-easy-crop';
 
 interface ReceiptScanResult {
   description: string;
@@ -26,6 +28,11 @@ interface ReceiptScannerProps {
 const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: ReceiptScannerProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanPreview, setScanPreview] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -174,6 +181,78 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
     }
   };
 
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const createImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener('load', () => resolve(image));
+      image.addEventListener('error', (error) => reject(error));
+      image.src = url;
+    });
+  };
+
+  const getCroppedImage = async (imageSrc: string, pixelCrop: Area): Promise<File> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('Failed to get canvas context');
+    }
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Failed to create blob'));
+          return;
+        }
+        const file = new File([blob], 'cropped-receipt.jpg', { type: 'image/jpeg' });
+        resolve(file);
+      }, 'image/jpeg', 0.95);
+    });
+  };
+
+  const handleCropAndScan = async () => {
+    if (!croppedAreaPixels || !scanPreview) return;
+    
+    try {
+      const croppedFile = await getCroppedImage(scanPreview, croppedAreaPixels);
+      setShowCropper(false);
+      await scanReceipt(croppedFile);
+    } catch (error) {
+      console.error('Cropping error:', error);
+      toast({
+        title: "Crop Failed",
+        description: "Failed to crop image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSkipCropping = async () => {
+    if (!selectedFile) return;
+    setShowCropper(false);
+    await scanReceipt(selectedFile);
+  };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -198,7 +277,10 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
       return;
     }
 
-    await scanReceipt(file);
+    // Show cropper instead of scanning immediately
+    setSelectedFile(file);
+    setScanPreview(URL.createObjectURL(file));
+    setShowCropper(true);
   };
 
   const openFileDialog = () => {
@@ -212,73 +294,120 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
   return (
     <Card className="w-full">
       <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="text-center">
-            <h3 className="text-lg font-medium mb-2">Scan Receipt</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Upload a receipt image to automatically extract expense details
-            </p>
-          </div>
-
-          {scanPreview && (
-            <div className="flex justify-center mb-4">
-              <img 
-                src={scanPreview} 
-                alt="Receipt preview" 
-                className="max-w-32 max-h-32 object-contain rounded border"
+        {showCropper && scanPreview ? (
+          <div className="space-y-4">
+            <div className="text-center mb-2">
+              <h3 className="text-lg font-medium">Crop Receipt (Optional)</h3>
+              <p className="text-sm text-muted-foreground">
+                Crop to just the receipt for better accuracy
+              </p>
+            </div>
+            
+            <div className="relative w-full h-64 bg-gray-100 rounded">
+              <Cropper
+                image={scanPreview}
+                crop={crop}
+                zoom={zoom}
+                aspect={3 / 4}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
               />
             </div>
-          )}
+            
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Zoom</label>
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={handleSkipCropping}
+                disabled={isScanning}
+                className="flex items-center gap-2"
+              >
+                <SkipForward className="w-4 h-4" />
+                Skip Cropping
+              </Button>
+              
+              <Button
+                onClick={handleCropAndScan}
+                disabled={isScanning}
+                className="flex items-center gap-2"
+              >
+                {isScanning ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Crop className="w-4 h-4" />
+                )}
+                {isScanning ? 'Scanning...' : 'Crop & Scan'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-2">Scan Receipt</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload a receipt image to automatically extract expense details
+              </p>
+            </div>
 
-          <div className="flex gap-3 justify-center">
-            <Button
-              variant="outline"
-              onClick={openCamera}
-              disabled={disabled || isScanning}
-              className="flex items-center gap-2"
-            >
-              <Camera className="w-4 h-4" />
-              Camera
-            </Button>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={openCamera}
+                disabled={disabled || isScanning}
+                className="flex items-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Camera
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={openFileDialog}
-              disabled={disabled || isScanning}
-              className="flex items-center gap-2"
-            >
-              {isScanning ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
+              <Button
+                variant="outline"
+                onClick={openFileDialog}
+                disabled={disabled || isScanning}
+                className="flex items-center gap-2"
+              >
                 <Upload className="w-4 h-4" />
-              )}
-              {isScanning ? 'Scanning...' : 'Upload'}
-            </Button>
+                Upload
+              </Button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            <div className="text-xs text-muted-foreground text-center">
+              Supported formats: JPEG, PNG, WebP • Max size: 10MB
+              <br />
+              Base currency: {baseCurrency}
+            </div>
           </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-
-          <div className="text-xs text-muted-foreground text-center">
-            Supported formats: JPEG, PNG, WebP • Max size: 10MB
-            <br />
-            Base currency: {baseCurrency}
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
