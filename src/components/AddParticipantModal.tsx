@@ -19,6 +19,7 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [shares, setShares] = useState('1');
+  const [tab, setTab] = useState<'search' | 'manual'>('search');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +68,7 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="search" className="w-full flex-1 flex flex-col min-h-0">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'search' | 'manual')} className="w-full flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="search" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
@@ -79,29 +80,40 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="search" className="space-y-4">
-            <div className="space-y-2">
-              <Label>Find existing users</Label>
-              <UserSearchInput onSelectUser={handleSelectUser} />
+          <TabsContent value="search" className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+              <div className="space-y-2">
+                <Label>Find existing users</Label>
+                <UserSearchInput onSelectUser={handleSelectUser} />
+                <p className="text-xs text-slate-500">Tap a user below to add them immediately.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="search-shares">Shares (people they represent)</Label>
+                <Input
+                  id="search-shares"
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={shares}
+                  onChange={(e) => setShares(e.target.value)}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value);
+                    setShares(val >= 1 ? val.toString() : '1');
+                  }}
+                  placeholder="Number of shares"
+                />
+                <p className="text-xs text-slate-500">
+                  If they represent a family of 3, set this to 3
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="search-shares">Shares (people they represent)</Label>
-              <Input
-                id="search-shares"
-                type="number"
-                min="1"
-                inputMode="numeric"
-                value={shares}
-                onChange={(e) => setShares(e.target.value)}
-                onBlur={(e) => {
-                  const val = parseInt(e.target.value);
-                  setShares(val >= 1 ? val.toString() : '1');
-                }}
-                placeholder="Number of shares"
-              />
-              <p className="text-xs text-slate-500">
-                If they represent a family of 3, set this to 3
-              </p>
+            <div className="flex gap-2 justify-end flex-shrink-0 pt-4 border-t bg-background sticky bottom-0">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={() => setTab('manual')}>
+                Add Manually
+              </Button>
             </div>
           </TabsContent>
 
