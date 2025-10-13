@@ -56,8 +56,8 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
           Add Participant
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md flex flex-col max-h-[85vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Add Participant
@@ -67,7 +67,7 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="search" className="w-full">
+        <Tabs defaultValue="search" className="w-full flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="search" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
@@ -105,50 +105,52 @@ const AddParticipantModal = ({ onAddParticipant, isLoading }: AddParticipantModa
             </div>
           </TabsContent>
 
-          <TabsContent value="manual" className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="participant-name">Name</Label>
-                <Input
-                  id="participant-name"
-                  type="text"
-                  placeholder="Enter participant's name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
+          <TabsContent value="manual" className="flex-1 flex flex-col min-h-0">
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="participant-name">Name</Label>
+                  <Input
+                    id="participant-name"
+                    type="text"
+                    placeholder="Enter participant's name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="participant-email">Email</Label>
+                  <Input
+                    id="participant-email"
+                    type="email"
+                    placeholder="Enter participant's email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="participant-shares">Shares (people they represent)</Label>
+                  <Input
+                    id="participant-shares"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    value={shares}
+                    onChange={(e) => setShares(e.target.value)}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value);
+                      setShares(val >= 1 ? val.toString() : '1');
+                    }}
+                    placeholder="Number of shares"
+                  />
+                  <p className="text-xs text-slate-500">
+                    If they represent a family of 3, set this to 3
+                  </p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="participant-email">Email</Label>
-                <Input
-                  id="participant-email"
-                  type="email"
-                  placeholder="Enter participant's email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="participant-shares">Shares (people they represent)</Label>
-                <Input
-                  id="participant-shares"
-                  type="number"
-                  min="1"
-                  inputMode="numeric"
-                  value={shares}
-                  onChange={(e) => setShares(e.target.value)}
-                  onBlur={(e) => {
-                    const val = parseInt(e.target.value);
-                    setShares(val >= 1 ? val.toString() : '1');
-                  }}
-                  placeholder="Number of shares"
-                />
-                <p className="text-xs text-slate-500">
-                  If they represent a family of 3, set this to 3
-                </p>
-              </div>
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end flex-shrink-0 pt-4 border-t bg-background sticky bottom-0">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
