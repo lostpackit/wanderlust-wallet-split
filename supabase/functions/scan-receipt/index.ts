@@ -145,43 +145,75 @@ class ReceiptParser {
       }
     }
 
-    // Extract vendor name - look for business names and clean up
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    // Extract vendor name with better heuristics
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     let vendor = 'Unknown Vendor';
     
     if (lines.length > 0) {
-      // Look for the most likely vendor name in first few lines
-      for (let i = 0; i < Math.min(5, lines.length); i++) {
-        const line = lines[i].trim();
-        
-        // Skip common receipt headers/artifacts
-        if (line.match(/^\d+$/) || // Just numbers
-            line.match(/^[\*#@\-=\s]+$/) || // Just symbols
-            line.toLowerCase().includes('receipt') ||
-            line.toLowerCase().includes('invoice') ||
-            line.toLowerCase().includes('order') ||
-            line.length < 3) {
-          continue;
-        }
-        
-        // Clean up the line
-        let cleanLine = line
-          .replace(/[*#@]+/g, '') // Remove symbols
-          .replace(/\s+/g, ' ') // Normalize spaces
-          .trim();
-        
-        if (cleanLine.length >= 3 && cleanLine.length <= 50) {
-          vendor = cleanLine;
-          break;
+      const skipRe = /(receipt|invoice|order|subtotal|total|amount\s+due|grand\s+total|tax|vat|tva|mwst|adresse|address|tel|phone|fax|www|http|qty|item|cashier|terminal|merchant id|vat number|siren|siret|thank|merci|gracias)/i;
+      const clean = (s: string) => s
+        .replace(/[*#@_=<>\[\]{}|\\/]+/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/[^A-Za-z0-9 &.'\-]/g, '')
+        .trim();
+      const isLikelyVendor = (s: string) => {
+        const lower = s.toLowerCase();
+        if (skipRe.test(lower)) return false;
+        if (s.length < 3 || s.length > 60) return false;
+        const letters = (s.match(/[A-Za-z]/g) || []).length;
+        const digits = (s.match(/\d/g) || []).length;
+        if (letters < 3) return false;
+        if (digits > letters) return false;
+        return true;
+      };
+
+      // 1) Explicit labels
+      for (const line of lines.slice(0, 15)) {
+        const m = line.match(/^(merchant|store|vendor|business|shop)[:\-\s]+(.{3,60})$/i);
+        if (m) {
+          const candidate = clean(m[2]);
+          if (isLikelyVendor(candidate)) {
+            vendor = candidate;
+            break;
+          }
         }
       }
-      
-      // If vendor is still unknown, take the first substantial line
+
+      // 2) First 12 lines best candidate
+      if (vendor === 'Unknown Vendor') {
+        let best = '';
+        let bestScore = 0;
+        const window = lines.slice(0, Math.min(12, lines.length));
+        for (const line of window) {
+          const c = clean(line);
+          if (!isLikelyVendor(c)) continue;
+          const score = (c.match(/[A-Za-z]/g) || []).length - (c.match(/\d/g) || []).length;
+          if (score > bestScore) { bestScore = score; best = c; }
+        }
+        if (best) vendor = best;
+      }
+
+      // 3) Lines before total section
+      if (vendor === 'Unknown Vendor') {
+        const totalIdx = lines.findIndex(l => /(total|amount\s+due|grand\s+total)/i.test(l));
+        if (totalIdx > 1) {
+          let best = '';
+          let bestScore = 0;
+          const window = lines.slice(Math.max(0, totalIdx - 10), totalIdx);
+          for (const line of window) {
+            const c = clean(line);
+            if (!isLikelyVendor(c)) continue;
+            const score = (c.match(/[A-Za-z]/g) || []).length - (c.match(/\d/g) || []).length;
+            if (score > bestScore) { bestScore = score; best = c; }
+          }
+          if (best) vendor = best;
+        }
+      }
+
+      // 4) Fallback to first substantial line
       if (vendor === 'Unknown Vendor' && lines[0]) {
-        vendor = lines[0]
-          .replace(/[*#@]+/g, '')
-          .trim()
-          .substring(0, 50);
+        const c = clean(lines[0]);
+        if (isLikelyVendor(c)) vendor = c.substring(0, 60);
       }
     }
 
