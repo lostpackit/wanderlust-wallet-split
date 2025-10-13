@@ -48,9 +48,9 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
           let width = img.width;
           let height = img.height;
           
-          // Max dimensions to keep file under 1MB
-          const MAX_WIDTH = 1600;
-          const MAX_HEIGHT = 1600;
+          // Less aggressive resizing to preserve OCR quality
+          const MAX_WIDTH = 2000;
+          const MAX_HEIGHT = 2000;
           
           if (width > height) {
             if (width > MAX_WIDTH) {
@@ -73,18 +73,8 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
             return;
           }
           
+          // Draw image WITHOUT grayscale - color helps OCR accuracy
           ctx.drawImage(img, 0, 0, width, height);
-          
-          // Convert to grayscale
-          const imageData = ctx.getImageData(0, 0, width, height);
-          const data = imageData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            data[i] = gray;     // Red
-            data[i + 1] = gray; // Green
-            data[i + 2] = gray; // Blue
-          }
-          ctx.putImageData(imageData, 0, 0);
           
           canvas.toBlob(
             (blob) => {
@@ -99,7 +89,7 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
               }
             },
             'image/jpeg',
-            0.85
+            0.92  // Higher quality for better OCR
           );
         };
         img.onerror = reject;
@@ -130,9 +120,9 @@ const ReceiptScanner = ({ baseCurrency = 'USD', onScanComplete, disabled }: Rece
     try {
       console.log('Starting receipt scan...');
       
-      // Compress image if it's too large
+      // Compress image if needed (less aggressive threshold)
       let processedFile = file;
-      if (file.size > 800 * 1024) { // If larger than 800KB, compress
+      if (file.size > 900 * 1024) { // Only compress if larger than 900KB
         console.log('Compressing image from', file.size, 'bytes');
         processedFile = await compressImage(file);
         console.log('Compressed to', processedFile.size, 'bytes');
