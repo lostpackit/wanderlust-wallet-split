@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Receipt, Loader2 } from "lucide-react";
 import { Trip, Expense, ParticipantWithShares } from '@/types/trip';
-import AddExpenseModal from './AddExpenseModal';
+import ExpenseForm from './ExpenseForm';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -137,9 +137,10 @@ const QuickAddExpenseModal = ({ activeTrips }: QuickAddExpenseModalProps) => {
               <span className="ml-2">Loading participants...</span>
             </div>
           ) : selectedTripId && participants.length > 0 ? (
-            <AddExpenseModal
+            <ExpenseForm
               participants={participants}
-              onAddExpense={handleAddExpense}
+              onSubmit={handleAddExpense}
+              onCancel={handleClose}
               isLoading={isAddingExpense}
               tripId={selectedTripId}
               baseCurrency={selectedTrip?.baseCurrency}
