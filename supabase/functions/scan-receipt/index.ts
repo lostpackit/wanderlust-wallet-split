@@ -24,7 +24,7 @@ class OCRSpaceProvider implements OCRProvider {
     
     const formData = new FormData();
     formData.append('base64Image', imageData);
-    formData.append('language', 'eng,spa,fre,deu,ita,por,nld');
+    formData.append('language', 'eng');
     formData.append('detectOrientation', 'true');
     formData.append('scale', 'true');
     formData.append('OCREngine', '2'); // Use OCR Engine 2 for better accuracy
@@ -400,12 +400,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Receipt scanning error:', error);
+    // Return 200 with success:false to avoid SDK non-2xx errors on client
+    const message = error instanceof Error ? error.message : 'Failed to process receipt';
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to process receipt' 
+        error: message 
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   }
 });
