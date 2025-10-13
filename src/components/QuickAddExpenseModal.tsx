@@ -17,7 +17,6 @@ interface QuickAddExpenseModalProps {
 const QuickAddExpenseModal = ({ activeTrips }: QuickAddExpenseModalProps) => {
   const [open, setOpen] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string>('');
-  const [showExpenseForm, setShowExpenseForm] = useState(false);
 
   // Fetch participants for the selected trip
   const { data: participants = [], isLoading: participantsLoading } = useQuery({
@@ -59,96 +58,85 @@ const QuickAddExpenseModal = ({ activeTrips }: QuickAddExpenseModalProps) => {
   });
 
   const selectedTrip = activeTrips.find(t => t.id === selectedTripId);
-  const { addExpense, isAddingExpense } = useExpenses(selectedTripId);
+  const { addExpense, isAddingExpense } = useExpenses(selectedTripId || activeTrips[0]?.id);
 
-  const handleTripSelect = (tripId: string) => {
-    setSelectedTripId(tripId);
-    setShowExpenseForm(true);
-  };
-
-  const handleAddExpense = async (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleAddExpense = (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!selectedTripId) return;
     addExpense(expense);
-    // Reset and close
     setSelectedTripId('');
-    setShowExpenseForm(false);
     setOpen(false);
   };
 
   const handleClose = () => {
     setSelectedTripId('');
-    setShowExpenseForm(false);
     setOpen(false);
   };
 
+  // Set default trip when opening
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen && !selectedTripId && activeTrips.length > 0) {
+      setSelectedTripId(activeTrips[0].id);
+    }
+    if (!newOpen) {
+      handleClose();
+    }
+  };
+
   if (activeTrips.length === 0) {
-    return null; // Don't show button if no active trips
+    return null;
   }
 
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      setOpen(newOpen);
-      if (!newOpen) {
-        handleClose();
-      }
-    }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
           Quick Add Expense
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            Quick Add Expense
+            Add Expense
           </DialogTitle>
           <DialogDescription>
-            {!showExpenseForm 
-              ? "Select a trip to add the expense to"
-              : `Adding expense to ${selectedTrip?.name}`
-            }
+            Select a trip and add your expense details
           </DialogDescription>
         </DialogHeader>
 
-        {!showExpenseForm ? (
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="trip-select">Select Trip</Label>
-              <Select value={selectedTripId} onValueChange={handleTripSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a trip..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeTrips.map((trip) => (
-                    <SelectItem key={trip.id} value={trip.id}>
-                      {trip.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-4">
+          {/* Trip Selector at the top */}
+          <div className="space-y-2 pb-4 border-b">
+            <Label htmlFor="trip-select" className="flex items-center gap-1">
+              Trip
+              <span className="text-red-500">*</span>
+            </Label>
+            <Select value={selectedTripId} onValueChange={setSelectedTripId}>
+              <SelectTrigger className={!selectedTripId ? 'border-red-300' : ''}>
+                <SelectValue placeholder="Choose a trip..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activeTrips.map((trip) => (
+                  <SelectItem key={trip.id} value={trip.id}>
+                    {trip.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!selectedTripId && (
+              <p className="text-sm text-red-500">Please select a trip</p>
+            )}
+          </div>
+
+          {/* Show loading or expense form */}
+          {participantsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading participants...</span>
             </div>
-          </div>
-        ) : participantsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <span className="ml-2">Loading participants...</span>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setShowExpenseForm(false);
-                setSelectedTripId('');
-              }}
-            >
-              ← Change Trip
-            </Button>
-            
-            {/* Embed the expense form */}
+          ) : selectedTripId && participants.length > 0 ? (
             <AddExpenseModal
               participants={participants}
               onAddExpense={handleAddExpense}
@@ -156,8 +144,13 @@ const QuickAddExpenseModal = ({ activeTrips }: QuickAddExpenseModalProps) => {
               tripId={selectedTripId}
               baseCurrency={selectedTrip?.baseCurrency}
             />
-          </div>
-        )}
+          ) : selectedTripId ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No participants found for this trip.</p>
+              <p className="text-sm mt-2">Add participants to the trip first.</p>
+            </div>
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );
