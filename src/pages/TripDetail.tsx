@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,8 +33,10 @@ import PaymentHistory from "@/components/PaymentHistory";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const highlightExpenseId = searchParams.get('expenseId');
   
   // Redirect to home if not authenticated
   React.useEffect(() => {
@@ -52,7 +54,7 @@ const TripDetail = () => {
   const { deleteTrip, isDeletingTrip, updateTrip } = useTrips();
   const { createNotification } = useNotifications();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(highlightExpenseId ? "expenses" : "overview");
   
   // Use the dedicated hooks for mutations
   const { 
@@ -369,6 +371,8 @@ const TripDetail = () => {
               isDeleting={isDeletingExpense}
               isUpdating={isUpdatingExpense}
               tripBaseCurrency={trip?.baseCurrency || 'USD'}
+              highlightExpenseId={highlightExpenseId}
+              onHighlightComplete={() => setSearchParams({})}
             />
           </TabsContent>
 
