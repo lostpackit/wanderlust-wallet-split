@@ -49,17 +49,21 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+        <Card 
+          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all"
+          onClick={() => document.getElementById('active-trips-section')?.scrollIntoView({ behavior: 'smooth' })}
+        >
           <CardContent className="p-4 text-center">
             <MapIcon className="w-8 h-8 mx-auto mb-2" />
             <p className="text-sm opacity-90">Active Trips</p>
             <p className="text-2xl font-bold">{activeTrips.length}</p>
+            <p className="text-xs opacity-75 mt-1">Tap to view</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Active Trips */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <Card id="active-trips-section" className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-slate-800">
             <MapIcon className="w-5 h-5 text-blue-600" />
