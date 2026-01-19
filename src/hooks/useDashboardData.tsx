@@ -1,9 +1,9 @@
-
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Trip, Participant, Expense, UserDashboardData } from '@/types/trip';
+
+const DASHBOARD_DATA_QUERY_VERSION = 2;
 
 export const useDashboardData = () => {
   const { user } = useAuth();
@@ -13,7 +13,7 @@ export const useDashboardData = () => {
     isLoading: dashboardLoading,
     error: dashboardError
   } = useQuery({
-    queryKey: ['dashboard-data', user?.id],
+    queryKey: ['dashboard-data', user?.id, DASHBOARD_DATA_QUERY_VERSION],
     queryFn: async () => {
       if (!user) return null;
 
