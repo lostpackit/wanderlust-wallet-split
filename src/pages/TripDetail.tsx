@@ -31,6 +31,7 @@ import ExpensesList from "@/components/ExpensesList";
 import BalanceView from "@/components/BalanceView";
 import PaymentHistory from "@/components/PaymentHistory";
 import ExpenseCategoryChart from "@/components/ExpenseCategoryChart";
+import SettlementProgress from "@/components/SettlementProgress";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -331,6 +332,12 @@ const TripDetail = () => {
                 </CardContent>
               </Card>
             )}
+            
+            {/* Settlement Progress */}
+            <SettlementProgress 
+              tripId={tripId!}
+              totalExpenses={totalExpenses}
+            />
             
             {/* Expense Category Chart */}
             {expenses.length > 0 && (
