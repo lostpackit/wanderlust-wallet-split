@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trash2, Receipt, Users, Scan, Edit, ArrowRight, Pencil } from "lucide-react";
-import { Expense, Participant, ParticipantWithShares } from '@/types/trip';
+import { Expense, ParticipantWithShares } from '@/types/trip';
 import { format } from 'date-fns';
 import EditExpenseModal from './EditExpenseModal';
 
@@ -29,10 +29,30 @@ interface ExpensesListProps {
   isDeleting: boolean;
   isUpdating: boolean;
   tripBaseCurrency?: string;
+  highlightExpenseId?: string | null;
+  onHighlightComplete?: () => void;
 }
 
-const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense, isDeleting, isUpdating, tripBaseCurrency = 'USD' }: ExpensesListProps) => {
+const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense, isDeleting, isUpdating, tripBaseCurrency = 'USD', highlightExpenseId, onHighlightComplete }: ExpensesListProps) => {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(highlightExpenseId || null);
+
+  // Scroll to and highlight expense when highlightExpenseId is set
+  React.useEffect(() => {
+    if (highlightExpenseId) {
+      const element = document.getElementById(`expense-${highlightExpenseId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedId(highlightExpenseId);
+        // Remove highlight after animation
+        const timer = setTimeout(() => {
+          setHighlightedId(null);
+          onHighlightComplete?.();
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [highlightExpenseId, onHighlightComplete]);
 
   const getParticipantName = (id: string) => {
     const participant = participants.find(p => p.id === id);
@@ -79,9 +99,17 @@ const ExpensesList = ({ expenses, participants, onDeleteExpense, onUpdateExpense
     <>
       <div className="space-y-4">
         {expenses.map((expense) => (
-          <div key={expense.id} onClick={() => setEditingExpense(expense)}>
+          <div 
+            key={expense.id} 
+            id={`expense-${expense.id}`}
+            onClick={() => setEditingExpense(expense)}
+          >
             <Card 
-              className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+              className={`cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${
+                highlightedId === expense.id 
+                  ? 'ring-2 ring-primary ring-offset-2 bg-primary/5 animate-pulse' 
+                  : ''
+              }`}
             >
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">

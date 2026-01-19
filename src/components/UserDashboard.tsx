@@ -9,8 +9,8 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
 interface UserDashboardProps {
-  dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string })[] };
-  onSelectTrip: (trip: Trip) => void;
+  dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string; tripId: string })[] };
+  onSelectTrip: (trip: Trip, expenseId?: string) => void;
 }
 
 const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
@@ -124,13 +124,13 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentExpenses.slice(0, 5).map((expense: Expense & { tripName: string; tripId?: string }) => (
+              {recentExpenses.slice(0, 5).map((expense: Expense & { tripName: string; tripId: string }) => (
                 <div 
                   key={expense.id} 
                   className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 active:bg-slate-200 transition-colors"
                   onClick={() => {
-                    const trip = activeTrips.find(t => t.name === expense.tripName);
-                    if (trip) onSelectTrip(trip);
+                    const trip = activeTrips.find(t => t.id === expense.tripId);
+                    if (trip) onSelectTrip(trip, expense.id);
                   }}
                 >
                   <div>

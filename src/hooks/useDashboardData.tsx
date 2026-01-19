@@ -31,7 +31,7 @@ export const useDashboardData = () => {
 
       let totalOwed = 0;
       let totalOwing = 0;
-      const allRecentExpenses: (Expense & { tripName: string })[] = [];
+      const allRecentExpenses: (Expense & { tripName: string; tripId: string })[] = [];
       const userTrips: Trip[] = [];
 
       // For each trip, check if user is involved and calculate balances
@@ -263,7 +263,7 @@ export const useDashboardData = () => {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5);
 
-      const dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string })[] } = {
+      const dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string; tripId: string })[] } = {
         totalOwed: Math.round(totalOwed * 100) / 100,
         totalOwing: Math.round(totalOwing * 100) / 100,
         activeTrips: userTrips,

@@ -89,7 +89,12 @@ const Index = () => {
         {dashboardData.dashboardData ? (
           <UserDashboard 
             dashboardData={dashboardData.dashboardData}
-            onSelectTrip={(trip) => navigate(`/trip/${trip.id}`)}
+            onSelectTrip={(trip, expenseId) => {
+              const url = expenseId 
+                ? `/trip/${trip.id}?expenseId=${expenseId}` 
+                : `/trip/${trip.id}`;
+              navigate(url);
+            }}
           />
         ) : (
           <div className="text-center">
