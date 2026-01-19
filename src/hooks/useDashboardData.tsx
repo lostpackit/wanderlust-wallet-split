@@ -203,7 +203,44 @@ export const useDashboardData = () => {
               }
             });
 
-            console.log('Calculated balances:', balances);
+            console.log('Calculated balances before payments:', balances);
+
+            // Fetch confirmed/settled payments for this trip
+            const { data: tripPayments } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('trip_id', trip.id)
+              .in('status', ['confirmed', 'settled']);
+
+            // Adjust balances based on confirmed payments
+            // Payments work on user IDs, so we need to map participant IDs to user IDs
+            const participantToUserMap: { [participantId: string]: string } = {};
+            const userToParticipantMap: { [userId: string]: string } = {};
+            participants.forEach(p => {
+              if (p.userId) {
+                participantToUserMap[p.id] = p.userId;
+                userToParticipantMap[p.userId] = p.id;
+              }
+            });
+
+            tripPayments?.forEach(payment => {
+              const fromParticipantId = userToParticipantMap[payment.from_user_id];
+              const toParticipantId = userToParticipantMap[payment.to_user_id];
+              
+              if (fromParticipantId && toParticipantId) {
+                // Payment reduces what 'from' owes to 'to'
+                // 'from' paid money, so their balance goes up (less negative / more positive)
+                if (balances.hasOwnProperty(fromParticipantId)) {
+                  balances[fromParticipantId] += payment.amount;
+                }
+                // 'to' received money, so their balance goes down (less positive / more negative)
+                if (balances.hasOwnProperty(toParticipantId)) {
+                  balances[toParticipantId] -= payment.amount;
+                }
+              }
+            });
+
+            console.log('Calculated balances after payments:', balances);
 
             // Get current user's balance from calculated balances
             const currentUserBalance = balances[userParticipantId] || 0;

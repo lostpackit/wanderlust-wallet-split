@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Trip, Participant, Expense } from '@/types/trip';
-import { calculateDetailedBalances, DetailedBalances } from '@/utils/detailedBalanceCalculator';
+import { calculateDetailedBalances, DetailedBalances, Payment } from '@/utils/detailedBalanceCalculator';
 
 export const useDetailedBalances = () => {
   const { user } = useAuth();
@@ -37,6 +37,7 @@ export const useDetailedBalances = () => {
 
       const allExpenses: { [tripId: string]: Expense[] } = {};
       const allParticipants: { [tripId: string]: (Participant & { role: string; shares: number })[] } = {};
+      const allPayments: { [tripId: string]: Payment[] } = {};
       const userTrips: Trip[] = [];
 
       // Process each trip to see if user is involved
@@ -142,19 +143,37 @@ export const useDetailedBalances = () => {
 
         allExpenses[trip.id] = expenses;
         allParticipants[trip.id] = participants;
+
+        // Get confirmed/settled payments for this trip
+        const { data: tripPayments } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('trip_id', trip.id)
+          .in('status', ['confirmed', 'settled']);
+
+        allPayments[trip.id] = (tripPayments || []).map(p => ({
+          id: p.id,
+          from_user_id: p.from_user_id,
+          to_user_id: p.to_user_id,
+          trip_id: p.trip_id,
+          amount: p.amount,
+          status: p.status,
+        }));
       }
 
       console.log('User trips:', userTrips.length);
       console.log('All expenses keys:', Object.keys(allExpenses));
       console.log('All participants keys:', Object.keys(allParticipants));
+      console.log('All payments keys:', Object.keys(allPayments));
 
       // Calculate detailed balances
       const detailedBalances = calculateDetailedBalances(
         userTrips,
         allExpenses,
         allParticipants,
+        allPayments,
         user.id,
-        user.email // Pass user email as well for better matching
+        user.email || '' // Pass user email as well for better matching
       );
 
       console.log('Final calculated detailed balances:', detailedBalances);

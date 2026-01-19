@@ -102,6 +102,8 @@ export const usePayments = (tripId?: string) => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-balances'] });
       
       if (variables.initiatedBy === 'payer') {
         toast({
@@ -142,6 +144,8 @@ export const usePayments = (tripId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-balances'] });
       toast({
         title: "Payment confirmed",
         description: "The payment has been confirmed and settled.",

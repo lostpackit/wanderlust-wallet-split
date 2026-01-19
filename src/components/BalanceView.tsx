@@ -6,6 +6,7 @@ import { ArrowRight, DollarSign, TrendingUp, TrendingDown, Users } from "lucide-
 import { Participant, Expense } from "@/types/trip";
 import PaymentInfoModal from "./PaymentInfoModal";
 import PaymentStatusIndicator from "./PaymentStatusIndicator";
+import { usePayments } from "@/hooks/usePayments";
 
 interface BalanceViewProps {
   participants: (Participant & { shares?: number; additional_amount?: number })[];
@@ -14,6 +15,7 @@ interface BalanceViewProps {
 }
 
 const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
+  const { payments } = usePayments(tripId);
   const calculateBalances = () => {
     const balances: { [participantId: string]: number } = {};
     
@@ -70,6 +72,38 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
             balances[participantId] -= (shareAmount + additionalAmount);
           }
         });
+      }
+    });
+
+    // Apply confirmed/settled payments to adjust balances
+    // Build user ID to participant ID mapping
+    const userToParticipantMap: { [userId: string]: string } = {};
+    participants.forEach(p => {
+      const userId = p.userId || p.user_id;
+      if (userId) {
+        userToParticipantMap[userId] = p.id;
+      }
+    });
+
+    // Filter for confirmed/settled payments only
+    const settledPayments = payments.filter(p => 
+      p.status === 'confirmed' || p.status === 'settled'
+    );
+
+    settledPayments.forEach(payment => {
+      const fromParticipantId = userToParticipantMap[payment.from_user_id];
+      const toParticipantId = userToParticipantMap[payment.to_user_id];
+      
+      if (fromParticipantId && toParticipantId) {
+        // Payment: 'from' paid money to 'to'
+        // This increases 'from' balance (they paid, so less in debt)
+        if (balances.hasOwnProperty(fromParticipantId)) {
+          balances[fromParticipantId] += payment.amount;
+        }
+        // This decreases 'to' balance (they received, so less owed to them)
+        if (balances.hasOwnProperty(toParticipantId)) {
+          balances[toParticipantId] -= payment.amount;
+        }
       }
     });
 

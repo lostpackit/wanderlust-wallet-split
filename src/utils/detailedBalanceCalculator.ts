@@ -1,6 +1,15 @@
 
 import { Trip, Participant, Expense } from '@/types/trip';
 
+export interface Payment {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  trip_id: string;
+  amount: number;
+  status: string;
+}
+
 export interface PersonBalance {
   participantId: string;
   participantName: string;
@@ -21,6 +30,7 @@ export const calculateDetailedBalances = (
   trips: Trip[],
   allExpenses: { [tripId: string]: Expense[] },
   allParticipants: { [tripId: string]: (Participant & { role: string; shares?: number; additional_amount?: number })[] },
+  allPayments: { [tripId: string]: Payment[] },
   currentUserId: string,
   currentUserEmail: string
 ): DetailedBalances => {
@@ -28,6 +38,7 @@ export const calculateDetailedBalances = (
     tripsCount: trips.length,
     expensesKeys: Object.keys(allExpenses),
     participantsKeys: Object.keys(allParticipants),
+    paymentsKeys: Object.keys(allPayments),
     currentUserId,
     currentUserEmail
   });
@@ -137,7 +148,37 @@ export const calculateDetailedBalances = (
       }
     });
 
-    console.log(`Balances for trip ${trip.name}:`, balances);
+    // Apply confirmed/settled payments to adjust balances
+    const tripPayments = allPayments[trip.id] || [];
+    
+    // Build user ID to participant ID mapping
+    const userToParticipantMap: { [userId: string]: string } = {};
+    tripParticipants.forEach(p => {
+      if (p.userId) {
+        userToParticipantMap[p.userId] = p.id;
+      }
+    });
+
+    tripPayments.forEach(payment => {
+      if (payment.status === 'confirmed' || payment.status === 'settled') {
+        const fromParticipantId = userToParticipantMap[payment.from_user_id];
+        const toParticipantId = userToParticipantMap[payment.to_user_id];
+        
+        if (fromParticipantId && toParticipantId) {
+          // Payment: 'from' paid money to 'to'
+          // This increases 'from' balance (they paid, so less in debt)
+          if (balances.hasOwnProperty(fromParticipantId)) {
+            balances[fromParticipantId] += payment.amount;
+          }
+          // This decreases 'to' balance (they received, so less owed to them)
+          if (balances.hasOwnProperty(toParticipantId)) {
+            balances[toParticipantId] -= payment.amount;
+          }
+        }
+      }
+    });
+
+    console.log(`Balances for trip ${trip.name} (after payments):`, balances);
 
     // Now calculate what current user owes to or is owed by each other participant
     const currentUserBalance = balances[currentUserParticipant.id] || 0;
