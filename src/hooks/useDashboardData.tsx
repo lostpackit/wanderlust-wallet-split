@@ -146,24 +146,60 @@ export const useDashboardData = () => {
               balances[p.id] = 0;
             });
 
-            // Calculate balances from expenses
+            // Get participant shares data
+            const { data: participantSharesData } = await supabase
+              .from('trip_participants')
+              .select('participant_id, shares, additional_amount')
+              .eq('trip_id', trip.id);
+
+            const participantSharesMap: { [id: string]: { shares: number; additional_amount: number } } = {};
+            participantSharesData?.forEach(ps => {
+              participantSharesMap[ps.participant_id] = {
+                shares: ps.shares || 1,
+                additional_amount: ps.additional_amount || 0
+              };
+            });
+
+            // Calculate balances from expenses using shares
             expenses.forEach(expense => {
-              const splitAmount = expense.amount / expense.splitBetween.length;
+              // Get participants in this expense with their shares
+              const participantsInExpense = expense.splitBetween
+                .filter(id => participantSharesMap[id])
+                .map(id => ({ id, ...participantSharesMap[id] }));
               
-              console.log(`Processing expense: ${expense.description}, amount: ${expense.amount}, split: ${splitAmount}`);
-              console.log(`Paid by: ${expense.paidBy}, split between: ${expense.splitBetween}`);
-              
-              // The person who paid gets credited
+              // The person who paid gets credited with full amount
               if (balances.hasOwnProperty(expense.paidBy)) {
                 balances[expense.paidBy] += expense.amount;
               }
               
-              // Everyone who should split it gets debited
-              expense.splitBetween.forEach(participantId => {
-                if (balances.hasOwnProperty(participantId)) {
-                  balances[participantId] -= splitAmount;
-                }
-              });
+              if (expense.transactionShares) {
+                // Use transaction-specific shares
+                const transactionShares = expense.transactionShares as { [key: string]: number };
+                const totalTransactionShares = participantsInExpense.reduce((sum, p) => 
+                  sum + (transactionShares[p.id] || 1), 0
+                );
+                
+                expense.splitBetween.forEach(participantId => {
+                  if (balances.hasOwnProperty(participantId)) {
+                    const share = transactionShares[participantId] || 1;
+                    const participantAmount = expense.amount * share / totalTransactionShares;
+                    balances[participantId] -= participantAmount;
+                  }
+                });
+              } else {
+                // Use default trip shares with additional amounts
+                const totalSharesInExpense = participantsInExpense.reduce((sum, p) => sum + p.shares, 0);
+                const additionalAmountsInExpense = participantsInExpense.reduce((sum, p) => sum + p.additional_amount, 0);
+                const shareableAmount = expense.amount - additionalAmountsInExpense;
+                
+                expense.splitBetween.forEach(participantId => {
+                  const participantData = participantSharesMap[participantId];
+                  if (participantData && balances.hasOwnProperty(participantId)) {
+                    const shareAmount = shareableAmount > 0 ? (shareableAmount * participantData.shares) / totalSharesInExpense : 0;
+                    balances[participantId] -= (shareAmount + participantData.additional_amount);
+                  }
+                });
+              }
             });
 
             console.log('Calculated balances:', balances);
