@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, User, CreditCard, Save } from "lucide-react";
+import { ArrowLeft, User, CreditCard, Save, FileSpreadsheet, Loader2 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import PersonalExportModal from "@/components/PersonalExportModal";
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -201,6 +201,30 @@ const Profile = () => {
                   Save Changes
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          {/* My Data Section */}
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-800">
+                <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+                My Data
+              </CardTitle>
+              <CardDescription>
+                Export your expense data for personal records or tax purposes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-slate-800">Export All Expenses</h4>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Download a CSV of all your expenses across trips with date range options
+                  </p>
+                </div>
+                <PersonalExportModal />
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -7,6 +7,7 @@ import { MapIcon, DollarSignIcon, TrendingUpIcon, TrendingDownIcon, CalendarIcon
 import { Trip, UserDashboardData, Expense } from "@/types/trip";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import PersonalExportModal from "./PersonalExportModal";
 
 interface UserDashboardProps {
   dashboardData: UserDashboardData & { recentExpenses: (Expense & { tripName: string; tripId: string })[] };
@@ -23,6 +24,11 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Quick Actions */}
+      <div className="flex justify-end">
+        <PersonalExportModal variant="compact" />
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card 
