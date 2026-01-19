@@ -71,17 +71,22 @@ export const usePayments = (tripId?: string) => {
       description?: string;
       initiatedBy: 'payer' | 'payee';
     }) => {
-      if (!user || !tripId) throw new Error('User not authenticated or trip not selected');
+      if (!user || !tripId) throw new Error('Please sign in to record payments.');
 
-      // Get the user ID for the target participant
-      const toUserId = await getParticipantUserId(toParticipantId);
-      if (!toUserId) {
-        throw new Error('The recipient does not have a linked user account. They need to sign up and link their account to receive payments.');
+      // Get the user ID for the target participant (may be null for unlinked participants)
+      const otherUserId = await getParticipantUserId(toParticipantId);
+      
+      // For "I Paid" (payer initiated): recipient needs a linked account to receive notification
+      // For "I Received" (payee initiated): the payer doesn't need an account - we just record it
+      if (initiatedBy === 'payer' && !otherUserId) {
+        throw new Error(`${description?.includes('to') ? description.split('to ')[1] : 'This person'} hasn't joined the app yet. Ask them to sign up with the same email used in this trip, then you can send them payments.`);
       }
 
       const paymentData = {
-        from_user_id: initiatedBy === 'payer' ? user.id : toUserId,
-        to_user_id: initiatedBy === 'payer' ? toUserId : user.id,
+        // For "I Paid": from = me, to = recipient (requires their account)
+        // For "I Received": from = payer (may not have account), to = me
+        from_user_id: initiatedBy === 'payer' ? user.id : (otherUserId || user.id),
+        to_user_id: initiatedBy === 'payer' ? otherUserId : user.id,
         trip_id: tripId,
         amount,
         description,
@@ -107,21 +112,21 @@ export const usePayments = (tripId?: string) => {
       
       if (variables.initiatedBy === 'payer') {
         toast({
-          title: "Payment claim submitted",
-          description: "The recipient will be notified to confirm the payment.",
+          title: "Payment recorded",
+          description: "The recipient will be notified to confirm.",
         });
       } else {
         toast({
-          title: "Payment confirmed",
-          description: "The payment has been marked as received.",
+          title: "Payment received!",
+          description: "This has been recorded and your balance is updated.",
         });
       }
     },
     onError: (error) => {
       console.error('Payment creation error:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to process payment. Please try again.",
+        title: "Couldn't record payment",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     },
