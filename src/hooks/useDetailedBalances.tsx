@@ -132,6 +132,7 @@ export const useDetailedBalances = () => {
           amount: expense.amount,
           paidBy: expense.paid_by,
           splitBetween: expense.split_between,
+          transactionShares: expense.transaction_shares as { [participantId: string]: number } | undefined,
           category: expense.category,
           date: expense.date,
           receipt: expense.receipt,
