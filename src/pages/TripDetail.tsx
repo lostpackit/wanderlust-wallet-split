@@ -313,21 +313,30 @@ const TripDetail = () => {
                     </p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <button 
+                      onClick={() => setActiveTab("participants")}
+                      className="text-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                    >
                       <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                       <div className="text-2xl font-bold text-slate-800">{participants.length}</div>
                       <div className="text-sm text-slate-600">Participants</div>
-                    </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab("balances")}
+                      className="text-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
+                    >
                       <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
                       <div className="text-2xl font-bold text-slate-800">${totalExpenses.toFixed(2)}</div>
                       <div className="text-sm text-slate-600">Total Expenses</div>
-                    </div>
-                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab("expenses")}
+                      className="text-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer"
+                    >
                       <Receipt className="w-8 h-8 text-orange-600 mx-auto mb-2" />
                       <div className="text-2xl font-bold text-slate-800">{expenses.length}</div>
                       <div className="text-sm text-slate-600">Expenses</div>
-                    </div>
+                    </button>
                   </div>
                 </CardContent>
               </Card>
