@@ -20,9 +20,11 @@ interface PaymentInfoModalProps {
   amount: number;
   tripId: string;
   recipientUserId?: string; // Optional: if we already know the user ID
+  payerId?: string; // The participant ID of who pays (for "Mark as Received")
+  payerName?: string; // The name of who pays
 }
 
-const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId, recipientUserId }: PaymentInfoModalProps) => {
+const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId, recipientUserId, payerId, payerName }: PaymentInfoModalProps) => {
   const { user } = useAuth();
   const { createPayment, isCreatingPayment } = usePayments(tripId);
   const { data: paymentMethods, isLoading } = useUserPaymentMethods(recipientUserId || recipientId);
@@ -50,10 +52,11 @@ const PaymentInfoModal = ({ recipientId, recipientName, amount, tripId, recipien
   };
 
   const handleMarkAsReceived = () => {
+    // When marking as received, the payer is the one who paid (payerId), not the recipient
     createPayment({
-      toParticipantId: recipientId,
+      toParticipantId: payerId || recipientId,
       amount: customAmount,
-      description: `Payment from ${recipientName}`,
+      description: `Payment from ${payerName || recipientName}`,
       initiatedBy: 'payee',
     });
     setOpen(false);

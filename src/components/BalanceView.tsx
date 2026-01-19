@@ -343,6 +343,8 @@ const BalanceView = ({ participants, expenses, tripId }: BalanceViewProps) => {
                           amount={settlement.amount}
                           tripId={tripId}
                           recipientUserId={toUserId}
+                          payerId={settlement.from}
+                          payerName={getParticipantName(settlement.from)}
                         />
                       </div>
                       {fromUserId && toUserId && (
