@@ -76,13 +76,17 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
           ) : (
             <div className="space-y-4">
               {activeTrips.map((trip) => (
-                <div key={trip.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                <div 
+                  key={trip.id} 
+                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer active:bg-slate-200"
+                  onClick={() => onSelectTrip(trip)}
+                >
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">{trip.name}</h3>
                     {trip.description && (
                       <p className="text-sm text-slate-600 mt-1">{trip.description}</p>
                     )}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 text-sm text-slate-500">
                       <span className="flex items-center gap-1">
                         <CalendarIcon className="w-4 h-4" />
                         {format(new Date(trip.startDate), "MMM d")} - {format(new Date(trip.endDate), "MMM d, yyyy")}
@@ -94,8 +98,11 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => onSelectTrip(trip)}
-                    className="ml-4"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectTrip(trip);
+                    }}
+                    className="ml-4 hidden md:inline-flex"
                   >
                     View Trip
                   </Button>
@@ -117,8 +124,15 @@ const UserDashboard = ({ dashboardData, onSelectTrip }: UserDashboardProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentExpenses.slice(0, 5).map((expense: Expense & { tripName: string }) => (
-                <div key={expense.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              {recentExpenses.slice(0, 5).map((expense: Expense & { tripName: string; tripId?: string }) => (
+                <div 
+                  key={expense.id} 
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 active:bg-slate-200 transition-colors"
+                  onClick={() => {
+                    const trip = activeTrips.find(t => t.name === expense.tripName);
+                    if (trip) onSelectTrip(trip);
+                  }}
+                >
                   <div>
                     <p className="font-medium text-slate-800">{expense.description}</p>
                     <p className="text-sm text-slate-500">
