@@ -24,6 +24,7 @@ export interface PersonBalance {
 export interface DetailedBalances {
   owedByMe: PersonBalance[];
   owedToMe: PersonBalance[];
+  allExpenses: Expense[];
 }
 
 export const calculateDetailedBalances = (
@@ -248,9 +249,13 @@ export const calculateDetailedBalances = (
       }))
     }));
 
-  const result = {
+  // Flatten all expenses into a single array
+  const flattenedExpenses: Expense[] = Object.values(allExpenses).flat();
+
+  const result: DetailedBalances = {
     owedByMe: roundBalances(Array.from(owedByMeMap.values())),
-    owedToMe: roundBalances(Array.from(owedToMeMap.values()))
+    owedToMe: roundBalances(Array.from(owedToMeMap.values())),
+    allExpenses: flattenedExpenses,
   };
 
   console.log('Final detailed balances result:', result);

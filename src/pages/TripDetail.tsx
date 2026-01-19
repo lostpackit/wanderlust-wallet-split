@@ -30,6 +30,7 @@ import ParticipantManager from "@/components/ParticipantManager";
 import ExpensesList from "@/components/ExpensesList";
 import BalanceView from "@/components/BalanceView";
 import PaymentHistory from "@/components/PaymentHistory";
+import ExpenseCategoryChart from "@/components/ExpenseCategoryChart";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -329,6 +330,15 @@ const TripDetail = () => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+            
+            {/* Expense Category Chart */}
+            {expenses.length > 0 && (
+              <ExpenseCategoryChart 
+                expenses={expenses} 
+                variant="bar"
+                title="Spending by Category"
+              />
             )}
           </TabsContent>
 

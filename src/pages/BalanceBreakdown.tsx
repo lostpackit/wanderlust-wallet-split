@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, ChevronRight, TrendingUp, TrendingDown, MapPin } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, TrendingUp, TrendingDown, MapPin, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDetailedBalances } from "@/hooks/useDetailedBalances";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
-import { Trip } from "@/types/trip";
+import { Trip, Expense } from "@/types/trip";
+import ExpenseCategoryChart from "@/components/ExpenseCategoryChart";
 
 const BalanceBreakdown = () => {
   const navigate = useNavigate();
@@ -47,6 +47,7 @@ const BalanceBreakdown = () => {
 
   const owedByMe = detailedBalances?.owedByMe || [];
   const owedToMe = detailedBalances?.owedToMe || [];
+  const allExpenses = detailedBalances?.allExpenses || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-orange-50 to-blue-100">
@@ -67,6 +68,12 @@ const BalanceBreakdown = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Expense Category Chart */}
+          <ExpenseCategoryChart 
+            expenses={allExpenses} 
+            variant="pie"
+            title="Spending by Category (All Trips)"
+          />
           {/* What I Owe Section */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <CardHeader>
