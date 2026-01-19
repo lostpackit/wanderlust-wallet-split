@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -397,10 +397,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      debug_auth_context: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      debug_auth_context: { Args: never; Returns: Json }
       is_user_trip_member: {
         Args: { trip_uuid: string; user_uuid: string }
         Returns: boolean
