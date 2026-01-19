@@ -11,9 +11,10 @@ interface AddExpenseModalProps {
   isLoading: boolean;
   tripId: string;
   baseCurrency?: string;
+  trigger?: React.ReactNode;
 }
 
-const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCurrency = 'USD' }: AddExpenseModalProps) => {
+const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCurrency = 'USD', trigger }: AddExpenseModalProps) => {
   const [open, setOpen] = useState(false);
 
   const handleSubmit = (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -21,13 +22,17 @@ const AddExpenseModal = ({ participants, onAddExpense, isLoading, tripId, baseCu
     setOpen(false);
   };
 
+  const defaultTrigger = (
+    <Button size="sm" className="gap-2">
+      <Plus className="h-4 w-4" />
+      Add Expense
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </Button>
+        {trigger || defaultTrigger}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
