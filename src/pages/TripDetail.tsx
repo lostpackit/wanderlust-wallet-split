@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard, Plus } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard, Plus, Download } from "lucide-react";
 import { Expense } from '@/types/trip';
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +32,7 @@ import BalanceView from "@/components/BalanceView";
 import PaymentHistory from "@/components/PaymentHistory";
 import ExpenseCategoryChart from "@/components/ExpenseCategoryChart";
 import SettlementProgress from "@/components/SettlementProgress";
+import { exportTripExpensesToCsv } from "@/utils/exportToCsv";
 
 const TripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -384,13 +385,30 @@ const TripDetail = () => {
           <TabsContent value="expenses" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-800">Expenses</h2>
-               <AddExpenseModal 
-                tripId={tripId!} 
-                participants={participants as any} 
-                onAddExpense={addExpense} 
-                isLoading={isAddingExpense}
-                baseCurrency={trip?.baseCurrency || 'USD'}
-              />
+              <div className="flex gap-2">
+                {expenses.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => exportTripExpensesToCsv({
+                      expenses,
+                      participants,
+                      tripName: trip?.name || 'trip',
+                      baseCurrency: trip?.baseCurrency || 'USD'
+                    })}
+                    className="bg-white/80 backdrop-blur-sm border-0 shadow-md hover:shadow-lg"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
+                )}
+                <AddExpenseModal 
+                  tripId={tripId!} 
+                  participants={participants as any} 
+                  onAddExpense={addExpense} 
+                  isLoading={isAddingExpense}
+                  baseCurrency={trip?.baseCurrency || 'USD'}
+                />
+              </div>
             </div>
             <ExpensesList
               expenses={expenses}
