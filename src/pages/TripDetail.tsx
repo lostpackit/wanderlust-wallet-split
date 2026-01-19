@@ -260,6 +260,7 @@ const TripDetail = () => {
               onTripNameChange={handleTripNameChange}
               participantCount={participants.length}
               totalExpenses={totalExpenses}
+              onTabChange={setActiveTab}
             />
           )}
         </div>
