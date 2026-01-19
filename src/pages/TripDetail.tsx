@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, CreditCard, Plus } from "lucide-react";
 import { Expense } from '@/types/trip';
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
@@ -422,6 +422,25 @@ const TripDetail = () => {
             />
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* Floating Action Button for Add Expense - Mobile friendly */}
+      <div className="fixed bottom-6 right-6 z-50 md:hidden">
+        <AddExpenseModal
+          tripId={tripId!}
+          participants={participants as any}
+          onAddExpense={addExpense}
+          isLoading={isAddingExpense}
+          baseCurrency={trip?.baseCurrency || 'USD'}
+          trigger={
+            <Button 
+              size="lg" 
+              className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          }
+        />
       </div>
     </div>
   );
