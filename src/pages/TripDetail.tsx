@@ -346,6 +346,8 @@ const TripDetail = () => {
             <SettlementProgress 
               tripId={tripId!}
               totalExpenses={totalExpenses}
+              expenses={expenses}
+              participants={participants}
             />
             
             {/* Expense Category Chart */}

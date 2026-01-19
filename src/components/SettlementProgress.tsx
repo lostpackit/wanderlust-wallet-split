@@ -3,26 +3,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Clock } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
+import { Expense, Participant } from "@/types/trip";
+import { calculateBalances } from "@/utils/balanceCalculator";
 
 interface SettlementProgressProps {
   tripId: string;
   totalExpenses: number;
+  expenses: Expense[];
+  participants: (Participant & { role: string })[];
 }
 
-const SettlementProgress: React.FC<SettlementProgressProps> = ({ tripId, totalExpenses }) => {
+const SettlementProgress: React.FC<SettlementProgressProps> = ({ 
+  tripId, 
+  totalExpenses,
+  expenses,
+  participants 
+}) => {
   const { payments, isLoading } = usePayments(tripId);
+
+  // Calculate actual debt that needs to change hands
+  const balances = calculateBalances(expenses, participants);
+  
+  // Total to settle = sum of all positive balances (what creditors are owed)
+  // This represents actual money that needs to flow between participants
+  const totalToSettle = balances.reduce((sum, balance) => {
+    return sum + Math.max(0, balance.netBalance);
+  }, 0);
 
   // Calculate total confirmed/settled payments
   const settledPayments = payments.filter(p => p.status === 'settled' || p.status === 'confirmed');
   const totalSettled = settledPayments.reduce((sum, p) => sum + p.amount, 0);
 
   // Calculate percentage (avoid division by zero)
-  const settlementPercentage = totalExpenses > 0 
-    ? Math.min((totalSettled / totalExpenses) * 100, 100) 
-    : 0;
+  const settlementPercentage = totalToSettle > 0 
+    ? Math.min((totalSettled / totalToSettle) * 100, 100) 
+    : (totalExpenses > 0 ? 100 : 0); // If no debt to settle but expenses exist, it's 100%
 
-  const remainingAmount = Math.max(totalExpenses - totalSettled, 0);
-  const isFullySettled = settlementPercentage >= 100;
+  const remainingAmount = Math.max(totalToSettle - totalSettled, 0);
+  const isFullySettled = totalToSettle === 0 || settlementPercentage >= 100;
 
   if (isLoading) {
     return (
@@ -50,7 +68,7 @@ const SettlementProgress: React.FC<SettlementProgressProps> = ({ tripId, totalEx
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
             <span className="text-slate-600">
-              ${totalSettled.toFixed(2)} of ${totalExpenses.toFixed(2)} settled
+              ${totalSettled.toFixed(2)} of ${totalToSettle.toFixed(2)} settled
             </span>
             <span className={`font-semibold ${isFullySettled ? 'text-green-600' : 'text-amber-600'}`}>
               {settlementPercentage.toFixed(0)}%
@@ -80,9 +98,15 @@ const SettlementProgress: React.FC<SettlementProgressProps> = ({ tripId, totalEx
         {isFullySettled && (
           <div className="text-center py-2 bg-green-50 rounded-lg">
             <span className="text-green-700 font-medium text-sm">
-              🎉 All expenses have been settled!
+              🎉 All debts have been settled!
             </span>
           </div>
+        )}
+        
+        {totalToSettle === 0 && totalExpenses > 0 && (
+          <p className="text-xs text-slate-500 text-center">
+            No money needs to change hands - expenses are already balanced!
+          </p>
         )}
       </CardContent>
     </Card>
