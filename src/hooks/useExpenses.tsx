@@ -181,6 +181,8 @@ export const useExpenses = (tripId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-balances'] });
       toast({
         title: "Expense added!",
         description: "Your expense has been recorded successfully.",
@@ -232,6 +234,8 @@ export const useExpenses = (tripId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-balances'] });
       toast({
         title: "Expense updated!",
         description: "Your expense has been updated successfully.",
@@ -257,6 +261,8 @@ export const useExpenses = (tripId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-balances'] });
       toast({
         title: "Expense deleted",
         description: "The expense has been deleted successfully.",
