@@ -258,6 +258,7 @@ export type Database = {
           full_name: string | null
           iban: string | null
           id: string
+          is_guest: boolean
           other_payment_info: string | null
           paypal_email: string | null
           updated_at: string
@@ -272,6 +273,7 @@ export type Database = {
           full_name?: string | null
           iban?: string | null
           id: string
+          is_guest?: boolean
           other_payment_info?: string | null
           paypal_email?: string | null
           updated_at?: string
@@ -286,6 +288,7 @@ export type Database = {
           full_name?: string | null
           iban?: string | null
           id?: string
+          is_guest?: boolean
           other_payment_info?: string | null
           paypal_email?: string | null
           updated_at?: string
@@ -398,6 +401,7 @@ export type Database = {
     }
     Functions: {
       debug_auth_context: { Args: never; Returns: Json }
+      is_guest_user: { Args: { user_uuid: string }; Returns: boolean }
       is_user_trip_member: {
         Args: { trip_uuid: string; user_uuid: string }
         Returns: boolean
