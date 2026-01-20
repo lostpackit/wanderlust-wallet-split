@@ -9,10 +9,10 @@ import { useTrips } from "@/hooks/useTrips";
 import CreateTripModal from "@/components/CreateTripModal";
 import QuickAddExpenseModal from "@/components/QuickAddExpenseModal";
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
@@ -79,9 +79,13 @@ const Index = () => {
             {dashboardData.dashboardData && (
               <QuickAddExpenseModal activeTrips={dashboardData.dashboardData.activeTrips} />
             )}
-            <Button variant="outline" onClick={() => window.location.href = '/profile'} className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/profile')} className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden md:inline">Profile</span>
+            </Button>
+            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline">Sign Out</span>
             </Button>
           </div>
         </div>
