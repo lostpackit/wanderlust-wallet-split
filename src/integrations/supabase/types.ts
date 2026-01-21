@@ -400,7 +400,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      debug_auth_context: { Args: never; Returns: Json }
       is_guest_user: { Args: { user_uuid: string }; Returns: boolean }
       is_user_trip_member: {
         Args: { trip_uuid: string; user_uuid: string }
