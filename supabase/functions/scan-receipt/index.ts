@@ -302,6 +302,42 @@ class CurrencyConverter {
   }
 }
 
+// Authentication helper
+async function authenticateRequest(req: Request): Promise<{ user: any; error: Response | null }> {
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return {
+      user: null,
+      error: new Response(
+        JSON.stringify({ error: 'Missing or invalid authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const { data, error } = await supabase.auth.getUser(token);
+  
+  if (error || !data.user) {
+    return {
+      user: null,
+      error: new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    };
+  }
+
+  return { user: data.user, error: null };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -309,6 +345,15 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const { user, error: authError } = await authenticateRequest(req);
+    if (authError) {
+      console.log('Authentication failed for scan-receipt request');
+      return authError;
+    }
+    
+    console.log(`Authenticated user ${user.id} making scan-receipt request`);
+
     const { imageData, baseCurrency = 'USD' } = await req.json();
     
     if (!imageData) {
