@@ -3,5 +3,11 @@ project_id = "suriubspgymcogfqnabm"
 [functions.scan-receipt]
 verify_jwt = false
 
+[functions.convert-currency]
+verify_jwt = false
+
+[functions.manage-exchange-rates]
+verify_jwt = false
+
 [functions.create-notification]
 verify_jwt = false
