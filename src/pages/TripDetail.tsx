@@ -8,7 +8,7 @@ import { ArrowLeft, Calendar, Users, DollarSign, Receipt, BarChart3, Trash2, Cre
 import { Expense } from '@/types/trip';
 import { useTripData, useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications } from "@/hooks/useNotifications";
+import { createNotificationSecure } from "@/hooks/useNotifications";
 import { useParticipants } from "@/hooks/useParticipants";
 import { useExpenses } from "@/hooks/useExpenses";
 import { format } from "date-fns";
@@ -55,7 +55,7 @@ const TripDetail = () => {
 
   const { trip, participants, expenses, tripLoading, participantsLoading, expensesLoading } = useTripData(tripId!);
   const { deleteTrip, isDeletingTrip, updateTrip } = useTrips();
-  const { createNotification } = useNotifications();
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(highlightExpenseId ? "expenses" : "overview");
   
@@ -99,17 +99,21 @@ const TripDetail = () => {
       // Non-creator requests deletion
       if (trip && user) {
         const requesterName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'A participant';
-        createNotification({
+        
+        // Send notification via secure edge function
+        createNotificationSecure({
           userId: trip.createdBy,
           title: "Trip Deletion Request",
           message: `${requesterName} has requested to delete the trip "${trip.name}"`,
+          type: 'trip_deletion_request',
           data: {
-            type: 'trip_deletion_request',
-            tripId: tripId,
+            trip_id: tripId,
             requesterId: user.id,
             requesterName: requesterName,
             tripName: trip.name
           }
+        }).catch((error) => {
+          console.error('Failed to send deletion request notification:', error);
         });
         
         // Show success message to requester
