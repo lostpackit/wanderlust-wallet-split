@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -14,6 +13,33 @@ export interface Notification {
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateNotificationParams {
+  userId: string;
+  title: string;
+  message: string;
+  type?: string;
+  data?: Record<string, unknown>;
+}
+
+// Helper function to create notifications via edge function
+export const createNotificationSecure = async (params: CreateNotificationParams): Promise<void> => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  
+  if (!accessToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const { error } = await supabase.functions.invoke('create-notification', {
+    body: params
+  });
+
+  if (error) {
+    console.error('Failed to create notification:', error);
+    throw new Error('Failed to create notification');
+  }
+};
 
 export const useNotifications = () => {
   const { user } = useAuth();
@@ -55,27 +81,8 @@ export const useNotifications = () => {
   });
 
   const createNotificationMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      title,
-      message,
-      data = {}
-    }: {
-      userId: string;
-      title: string;
-      message: string;
-      data?: any;
-    }) => {
-      const { error } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: userId,
-          title,
-          message,
-          data,
-        }]);
-
-      if (error) throw error;
+    mutationFn: async (params: CreateNotificationParams) => {
+      await createNotificationSecure(params);
     },
   });
 

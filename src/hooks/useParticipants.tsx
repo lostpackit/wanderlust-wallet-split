@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Participant } from '@/types/trip';
 import { useToast } from '@/hooks/use-toast';
-
+import { createNotificationSecure } from './useNotifications';
 export const useParticipants = (tripId: string | null) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -171,20 +170,19 @@ export const useParticipants = (tripId: string | null) => {
 
         const tripName = tripData?.name || 'a trip';
 
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert([{
-            user_id: resolvedUserId,
+        try {
+          await createNotificationSecure({
+            userId: resolvedUserId,
             title: 'Added to Trip',
             message: `You've been added to "${tripName}" by ${user.email}`,
+            type: 'trip_invitation',
             data: {
               trip_id: tripId,
               trip_name: tripName,
               added_by: user.email
             }
-          }]);
-
-        if (notificationError) {
+          });
+        } catch (notificationError) {
           console.error('Error creating notification:', notificationError);
           // Don't throw here as the main operation succeeded
         }
