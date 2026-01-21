@@ -6,7 +6,7 @@ import { Expense } from '@/types/trip';
 import { useToast } from '@/hooks/use-toast';
 
 export const useExpenses = (tripId: string | null) => {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,132 +52,36 @@ export const useExpenses = (tripId: string | null) => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
-      // Step 1: Session validation
-      if (!session || !user) {
-        throw new Error('User not authenticated or session expired');
+      if (!user) {
+        throw new Error('User not authenticated');
       }
 
-      console.log('=== Starting expense creation debugging ===');
-      
-      // Step 2: Get fresh session and access token
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session) {
-        throw new Error('Failed to get valid session');
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert([{
+          trip_id: expenseData.tripId,
+          description: expenseData.description,
+          amount: expenseData.amount,
+          paid_by: expenseData.paidBy,
+          split_between: expenseData.splitBetween,
+          transaction_shares: expenseData.transactionShares,
+          category: expenseData.category,
+          date: expenseData.date,
+          receipt: expenseData.receipt,
+          original_currency: expenseData.originalCurrency,
+          original_amount: expenseData.originalAmount,
+          exchange_rate: expenseData.exchangeRate,
+          receipt_data: expenseData.receiptData,
+          expense_source: expenseData.expenseSource,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
       }
 
-      const accessToken = sessionData.session.access_token;
-      console.log('Access token exists:', !!accessToken);
-      console.log('User ID from session:', sessionData.session.user.id);
-
-      // Step 3: Test database auth context with debug function
-      try {
-        console.log('Testing database auth context...');
-        const { data: authDebug, error: debugError } = await supabase
-          .rpc('debug_auth_context');
-        
-        console.log('Database auth context:', authDebug);
-        
-        if (debugError) {
-          console.error('Debug function error:', debugError);
-        }
-      } catch (debugErr) {
-        console.error('Failed to call debug function:', debugErr);
-      }
-
-      // Step 4: Force client to use current session
-      try {
-        await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: sessionData.session.refresh_token
-        });
-        console.log('Session set on client');
-      } catch (setSessionErr) {
-        console.error('Failed to set session:', setSessionErr);
-      }
-
-      // Step 5: Try expense creation with permissive policy
-      console.log('Creating expense with data:', {
-        trip_id: expenseData.tripId,
-        description: expenseData.description,
-        amount: expenseData.amount,
-        paid_by: expenseData.paidBy,
-        split_between: expenseData.splitBetween,
-        transaction_shares: expenseData.transactionShares,
-        category: expenseData.category,
-        date: expenseData.date,
-        receipt: expenseData.receipt
-      });
-      
-      try {
-        const { data, error } = await supabase
-          .from('expenses')
-          .insert([{
-            trip_id: expenseData.tripId,
-            description: expenseData.description,
-            amount: expenseData.amount,
-            paid_by: expenseData.paidBy,
-            split_between: expenseData.splitBetween,
-            transaction_shares: expenseData.transactionShares,
-            category: expenseData.category,
-            date: expenseData.date,
-            receipt: expenseData.receipt,
-            original_currency: expenseData.originalCurrency,
-            original_amount: expenseData.originalAmount,
-            exchange_rate: expenseData.exchangeRate,
-            receipt_data: expenseData.receiptData,
-            expense_source: expenseData.expenseSource,
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Supabase insert failed:', error);
-          
-          // Step 6: Try manual fetch with explicit headers as fallback
-          console.log('Trying manual fetch with explicit headers...');
-          
-          const baseUrl = 'https://suriubspgymcogfqnabm.supabase.co';
-          const response = await fetch(`${baseUrl}/rest/v1/expenses`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cml1YnNwZ3ltY29nZnFuYWJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3NTk3OTMsImV4cCI6MjA2NjMzNTc5M30.fKtl1sR99Gff4GV1wQGBZo_x9gBQw_o7w3gv97dFnYw'
-            },
-            body: JSON.stringify({
-              trip_id: expenseData.tripId,
-              description: expenseData.description,
-              amount: expenseData.amount,
-              paid_by: expenseData.paidBy,
-              split_between: expenseData.splitBetween,
-              transaction_shares: expenseData.transactionShares,
-              category: expenseData.category,
-              date: expenseData.date,
-              receipt: expenseData.receipt
-            })
-          });
-
-          console.log('Manual fetch response status:', response.status);
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Manual fetch failed:', response.status, errorText);
-            throw new Error(`Both Supabase client and manual fetch failed. Supabase error: ${error.message}. Fetch error: ${response.status} ${errorText}`);
-          }
-
-          const manualResult = await response.json();
-          console.log('Manual fetch succeeded:', manualResult);
-          return Array.isArray(manualResult) ? manualResult[0] : manualResult;
-        }
-
-        console.log('Supabase insert succeeded:', data);
-        return data;
-      } catch (err) {
-        console.error('All expense creation attempts failed:', err);
-        throw err;
-      }
-      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', tripId] });
