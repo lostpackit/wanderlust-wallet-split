@@ -9,6 +9,7 @@ import { useTrips } from "@/hooks/useTrips";
 import CreateTripModal from "@/components/CreateTripModal";
 import QuickAddExpenseModal from "@/components/QuickAddExpenseModal";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { User, LogOut } from "lucide-react";
 
 const Index = () => {
@@ -16,7 +17,7 @@ const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [view, setView] = useState<'landing' | 'auth' | 'dashboard'>(user ? 'dashboard' : 'landing');
-  const dashboardData = useDashboardData();
+  const { dashboardData, dashboardLoading: dashboardDataLoading, dashboardError } = useDashboardData();
   const { createTrip } = useTrips();
 
   // Handle redirect after authentication
@@ -76,8 +77,8 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap max-w-full">
             <CreateTripModal onCreateTrip={createTrip} />
-            {dashboardData.dashboardData && (
-              <QuickAddExpenseModal activeTrips={dashboardData.dashboardData.activeTrips} />
+            {dashboardData && (
+              <QuickAddExpenseModal activeTrips={dashboardData.activeTrips} />
             )}
             <Button variant="outline" onClick={() => navigate('/profile')} className="flex items-center gap-2">
               <User className="w-4 h-4" />
@@ -89,10 +90,33 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        
-        {dashboardData.dashboardData ? (
+
+        {dashboardError ? (
+          <Card className="bg-background/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold text-foreground">Dashboard failed to load</h2>
+                <p className="text-sm text-muted-foreground">
+                  This is usually caused by a permission (RLS) error or a stale login session.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => window.location.reload()}>Reload</Button>
+                <Button variant="outline" onClick={signOut}>Sign out & retry</Button>
+              </div>
+              <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                {String(dashboardError)}
+              </pre>
+            </CardContent>
+          </Card>
+        ) : dashboardDataLoading ? (
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading dashboard...</p>
+          </div>
+        ) : dashboardData ? (
           <UserDashboard 
-            dashboardData={dashboardData.dashboardData}
+            dashboardData={dashboardData}
             onSelectTrip={(trip, expenseId) => {
               const url = expenseId 
                 ? `/trip/${trip.id}?expenseId=${expenseId}` 
@@ -102,8 +126,7 @@ const Index = () => {
           />
         ) : (
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading dashboard...</p>
+            <p className="text-muted-foreground">No dashboard data yet.</p>
           </div>
         )}
       </div>
