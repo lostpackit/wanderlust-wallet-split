@@ -400,6 +400,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_participant_ids: {
+        Args: { user_uuid: string }
+        Returns: string[]
+      }
       is_guest_user: { Args: { user_uuid: string }; Returns: boolean }
       is_user_trip_member: {
         Args: { trip_uuid: string; user_uuid: string }
